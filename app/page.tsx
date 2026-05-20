@@ -143,7 +143,7 @@ export default function POSPage() {
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileCart(false)}/>
           {/* Sheet — leave 64px gap at bottom for nav bar */}
-          <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
+          <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
             style={{ height: 'calc(100dvh - 120px)' }}>
             {/* Drag handle */}
             <div className="flex justify-center pt-2.5 pb-1 shrink-0">
