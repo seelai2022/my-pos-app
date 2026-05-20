@@ -144,7 +144,7 @@ export default function POSPage() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileCart(false)}/>
           {/* Sheet — leave 64px gap at bottom for nav bar */}
           <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
-            style={{ height: 'calc(100vh - 64px)' }}>
+            style={{ height: 'calc(100vh - 130px)' }}>
             {/* Drag handle */}
             <div className="flex justify-center pt-2.5 pb-1 shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full"/>
