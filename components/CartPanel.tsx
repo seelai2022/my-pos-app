@@ -280,7 +280,8 @@ export default function CartPanel({
         )}
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-gray-100 space-y-1.5 shrink-0">
+        <div className="px-4 py-4 border-t border-gray-100 space-y-1.5 shrink-0 pb-safe"
+          style={{ paddingBottom: isMobile ? 'calc(1rem + env(safe-area-inset-bottom, 0px))' : undefined }}>
           {totalDiscount > 0 && <div className="flex justify-between text-sm text-green-600"><span>ສ່ວນຫຼຸດ</span><span>-{totalDiscount.toLocaleString()} ₭</span></div>}
           {vatSettings.enabled && vatAmount > 0 && (
             <div className="flex justify-between text-sm text-blue-600">

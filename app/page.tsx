@@ -144,7 +144,7 @@ export default function POSPage() {
           {/* Backdrop */}
           <div className="flex-1 bg-black/30" onClick={() => setShowMobileCart(false)}/>
           {/* Sheet */}
-          <div className="bg-white rounded-t-3xl shadow-2xl h-[85vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden" style={{ height: 'calc(85vh - 56px)' }}>
             {/* Handle bar */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full"/>
