@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { type Product, type ProductUnit } from '@/lib/supabase';
+import BarcodeScanner from './BarcodeScanner';
 
 interface CartItem {
   productId: string;
@@ -20,6 +21,7 @@ interface ProductGridProps {
 export default function ProductGrid({ products, onAdd }: ProductGridProps) {
   const [query, setQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(query.toLowerCase())
@@ -43,50 +45,69 @@ export default function ProductGrid({ products, onAdd }: ProductGridProps) {
     setSelectedProduct(null);
   };
 
+  const handleScanned = (code: string) => {
+    setShowScanner(false);
+    // ຊອກຫາສິນຄ້າຈາກ barcode
+    const product = products.find((p) => p.barcode === code);
+    if (product) { handleProductClick(product); return; }
+    // ຊອກຫາຈາກ unit barcode
+    for (const p of products) {
+      const unit = p.product_units?.find((u) => u.barcode === code);
+      if (unit) {
+        onAdd({ productId: p.id, unitId: unit.id, name: p.name, unitName: unit.name, price: unit.price, quantity: 1 });
+        return;
+      }
+    }
+    alert(`ບໍ່ພົບສິນຄ້າ: ${code}`);
+  };
+
   return (
     <>
-      <div className="flex flex-col flex-1 min-w-0 p-5 overflow-hidden">
-        {/* Search */}
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 mb-4 shadow-sm">
-          <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-          </svg>
-          <input type="text" placeholder="ຄົ້ນຫາສິນຄ້າ..." value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400"/>
+      <div className="flex flex-col flex-1 min-w-0 p-4 overflow-hidden">
+        {/* Search + Scan button */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 flex-1 shadow-sm">
+            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+            </svg>
+            <input type="text" placeholder="ຄົ້ນຫາສິນຄ້າ..." value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400"/>
+          </div>
+
+          {/* Camera Scan Button */}
+          <button onClick={() => setShowScanner(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-700 active:scale-95 transition-all shrink-0 shadow-sm">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M3 9V5a2 2 0 0 1 2-2h4M3 15v4a2 2 0 0 0 2 2h4M21 9V5a2 2 0 0 0-2-2h-4M21 15v4a2 2 0 0 1-2 2h-4"/>
+            </svg>
+            <span className="text-sm font-medium hidden sm:block">ສະແກນ</span>
+          </button>
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto pb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto pb-20 md:pb-2">
           {filtered.map((product) => (
             <div key={product.id} onClick={() => handleProductClick(product)}
               className="bg-white border border-gray-100 rounded-2xl overflow-hidden cursor-pointer
                          hover:border-gray-300 hover:-translate-y-0.5 active:scale-[0.98]
                          transition-all duration-150 shadow-sm">
-
-              {/* Image or Emoji */}
               <div className="h-28 relative bg-gray-50 overflow-hidden">
                 {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover"/>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-5xl select-none">
                     {product.emoji}
                   </div>
                 )}
-
-                {/* Unit badge */}
                 {product.product_units && product.product_units.length > 0 && (
                   <span className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium shadow-sm">
                     {product.product_units.length + 1} unit
                   </span>
                 )}
               </div>
-
               <div className="p-3">
                 <p className="text-sm font-medium text-gray-800 truncate">{product.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{product.price.toLocaleString()} ₭</p>
@@ -120,11 +141,9 @@ export default function ProductGrid({ products, onAdd }: ProductGridProps) {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
-                {/* Product image/emoji in modal */}
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
                   {selectedProduct.image_url ? (
-                    <img src={selectedProduct.image_url} alt={selectedProduct.name}
-                      className="w-full h-full object-cover"/>
+                    <img src={selectedProduct.image_url} alt={selectedProduct.name} className="w-full h-full object-cover"/>
                   ) : (
                     <span className="text-2xl">{selectedProduct.emoji}</span>
                   )}
@@ -137,7 +156,6 @@ export default function ProductGrid({ products, onAdd }: ProductGridProps) {
                 </svg>
               </button>
             </div>
-
             <div className="px-6 py-4 space-y-2">
               <p className="text-xs text-gray-400 mb-3">ເລືອກ unit</p>
               <button onClick={() => handleDefaultSelect(selectedProduct)}
@@ -161,6 +179,11 @@ export default function ProductGrid({ products, onAdd }: ProductGridProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Camera Scanner */}
+      {showScanner && (
+        <BarcodeScanner onScanned={handleScanned} onClose={() => setShowScanner(false)}/>
       )}
     </>
   );
