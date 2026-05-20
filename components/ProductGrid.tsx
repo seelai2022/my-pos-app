@@ -93,7 +93,7 @@ export default function ProductGrid({ products, onAdd }: ProductGridProps) {
                   ${product.stock === 0 ? 'opacity-50' : 'cursor-pointer hover:border-gray-300'}`}>
 
                 {/* Image / Emoji */}
-                <div className="relative bg-gray-50 overflow-hidden" style={{ paddingTop: '75%' }}>
+                <div className="relative bg-gray-50 overflow-hidden" style={{ height: '120px' }}>
                   <div className="absolute inset-0 flex items-center justify-center">
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.name} className="w-full h-full object-cover"/>
