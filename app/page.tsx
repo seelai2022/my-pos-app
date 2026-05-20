@@ -111,9 +111,8 @@ export default function POSPage() {
   const totalQty = cart.reduce((s, i) => s + i.quantity, 0);
 
   if (!staff) return <LoginModal />;
-
   if (loading) return (
-    <div className="flex flex-1 items-center justify-center bg-gray-50 text-gray-400 text-sm pb-16 md:pb-0">
+    <div className="flex flex-1 items-center justify-center bg-gray-50 text-gray-400 text-sm">
       ກຳລັງໂຫລດ...
     </div>
   );
@@ -121,13 +120,13 @@ export default function POSPage() {
   return (
     <div className="flex flex-1 min-w-0 bg-gray-50 overflow-hidden relative">
 
-      {/* Product Grid — always full width on mobile */}
+      {/* Product Grid */}
       <div className="flex flex-1 min-w-0 overflow-hidden">
         <ProductGrid products={products} onAdd={addToCart} />
       </div>
 
-      {/* Desktop Cart — fixed right panel */}
-      <div className="hidden md:flex w-80 shrink-0 bg-white border-l border-gray-100 overflow-hidden">
+      {/* Desktop Cart */}
+      <div className="hidden md:flex w-80 shrink-0 bg-white border-l border-gray-100">
         <CartPanel
           products={products} cart={cart}
           onChangeQty={changeQty} onClear={clearCart}
@@ -138,16 +137,15 @@ export default function POSPage() {
         />
       </div>
 
-      {/* Mobile Cart — bottom sheet */}
+      {/* Mobile Cart Bottom Sheet */}
       {showMobileCart && (
-        <div className="md:hidden fixed inset-0 z-30 flex flex-col">
-          {/* Backdrop */}
-          <div className="flex-1 bg-black/30" onClick={() => setShowMobileCart(false)}/>
-          {/* Sheet */}
-          <div className="bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden" style={{ height: 'calc(85vh - 56px)' }}>
-            {/* Handle bar */}
+        <div className="md:hidden fixed inset-0 z-30 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileCart(false)}/>
+          <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
+            style={{ height: 'calc(100vh - 120px)' }}>
+            {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 bg-gray-200 rounded-full"/>
+              <div className="w-10 h-1 bg-gray-300 rounded-full"/>
             </div>
             <CartPanel
               products={products} cart={cart}
@@ -163,20 +161,21 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* Mobile FAB — floating cart button */}
-      <button
-        onClick={() => setShowMobileCart(true)}
-        className="md:hidden fixed bottom-20 right-4 z-20 w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-xl flex items-center justify-center active:scale-95 transition-all">
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13M10 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm7 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
-        </svg>
-        {totalQty > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-            {totalQty}
-          </span>
-        )}
-      </button>
+      {/* Mobile FAB */}
+      {!showMobileCart && (
+        <button onClick={() => setShowMobileCart(true)}
+          className="md:hidden fixed bottom-20 right-4 z-20 w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-xl flex items-center justify-center active:scale-95 transition-all">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13M10 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm7 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
+          </svg>
+          {totalQty > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+              {totalQty}
+            </span>
+          )}
+        </button>
+      )}
     </div>
   );
 }
