@@ -120,7 +120,7 @@ export default function POSPage() {
   return (
     <div className="flex flex-1 min-w-0 bg-gray-50 overflow-hidden relative">
 
-      {/* Product Grid */}
+      {/* Product Grid — always full width on mobile */}
       <div className="flex flex-1 min-w-0 overflow-hidden">
         <ProductGrid products={products} onAdd={addToCart} />
       </div>
@@ -137,15 +137,17 @@ export default function POSPage() {
         />
       </div>
 
-      {/* Mobile Cart Bottom Sheet */}
+      {/* Mobile Cart — bottom sheet, height avoids bottom nav (64px) */}
       {showMobileCart && (
         <div className="md:hidden fixed inset-0 z-30 flex flex-col justify-end">
+          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileCart(false)}/>
+          {/* Sheet — leave 64px gap at bottom for nav bar */}
           <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
-            style={{ height: 'calc(100vh - 120px)' }}>
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 bg-gray-300 rounded-full"/>
+            style={{ height: 'calc(100vh - 64px)' }}>
+            {/* Drag handle */}
+            <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+              <div className="w-10 h-1 bg-gray-200 rounded-full"/>
             </div>
             <CartPanel
               products={products} cart={cart}
@@ -161,10 +163,11 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* Mobile FAB */}
+      {/* Mobile FAB — floating cart button above bottom nav */}
       {!showMobileCart && (
         <button onClick={() => setShowMobileCart(true)}
-          className="md:hidden fixed bottom-20 right-4 z-20 w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-xl flex items-center justify-center active:scale-95 transition-all">
+          className="md:hidden fixed z-20 bg-gray-900 text-white rounded-2xl shadow-xl flex items-center justify-center active:scale-95 transition-all"
+          style={{ width: 56, height: 56, bottom: 76, right: 16 }}>
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13M10 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm7 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
