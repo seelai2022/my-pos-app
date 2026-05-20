@@ -15,33 +15,43 @@ export default function LoginModal({ onClose }: LoginModalProps) {
   const [loading, setLoading] = useState(false);
 
   const handlePin = (digit: string) => {
+    if (loading) return;
     if (pin.length >= 6) return;
     const newPin = pin + digit;
     setPin(newPin);
     setError('');
-    if (newPin.length >= 4) tryLogin(newPin);
+    if (newPin.length >= 4) {
+      // small delay to show 4th dot before loading
+      setTimeout(() => tryLogin(newPin), 100);
+    }
   };
 
   const tryLogin = async (p: string) => {
     setLoading(true);
-    const { data } = await supabase
-      .from('staff')
-      .select('*')
-      .eq('pin', p)
-      .eq('active', true)
-      .single();
+    try {
+      const { data, error: err } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('pin', p)
+        .eq('active', true)
+        .single();
 
-    if (data) {
-      login(data as Staff);
-      onClose?.();
-    } else {
-      setError('PIN ບໍ່ຖືກຕ້ອງ');
+      if (err || !data) {
+        setError('PIN ບໍ່ຖືກຕ້ອງ');
+        setPin('');
+      } else {
+        login(data as Staff);
+        onClose?.();
+      }
+    } catch (e) {
+      setError('ເຊື່ອມຕໍ່ບໍ່ໄດ້ — ລອງໃໝ່');
       setPin('');
     }
     setLoading(false);
   };
 
   const handleDelete = () => {
+    if (loading) return;
     setPin(prev => prev.slice(0, -1));
     setError('');
   };
@@ -69,8 +79,11 @@ export default function LoginModal({ onClose }: LoginModalProps) {
           ))}
         </div>
 
-        {/* Error */}
-        {error && (
+        {/* Loading / Error */}
+        {loading && (
+          <p className="text-center text-sm text-gray-400 mb-2 animate-pulse">ກຳລັງກວດສອບ...</p>
+        )}
+        {error && !loading && (
           <p className="text-center text-sm text-red-500 mb-2">{error}</p>
         )}
 
@@ -84,7 +97,7 @@ export default function LoginModal({ onClose }: LoginModalProps) {
               {n}
             </button>
           ))}
-          <div /> {/* empty */}
+          <div/>
           <button onClick={() => handlePin('0')} disabled={loading}
             className="h-14 rounded-2xl bg-gray-50 text-xl font-medium text-gray-800
                        hover:bg-gray-100 active:scale-95 transition-all disabled:opacity-50">
@@ -92,7 +105,7 @@ export default function LoginModal({ onClose }: LoginModalProps) {
           </button>
           <button onClick={handleDelete} disabled={loading}
             className="h-14 rounded-2xl bg-gray-50 text-gray-500
-                       hover:bg-gray-100 active:scale-95 transition-all flex items-center justify-center">
+                       hover:bg-gray-100 active:scale-95 transition-all flex items-center justify-center disabled:opacity-50">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 0 0 1.414.586H19a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-8.172a2 2 0 0 0-1.414.586L3 12z"/>
