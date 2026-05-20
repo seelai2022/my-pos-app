@@ -146,7 +146,7 @@ export default function Receipt({ order, format }: ReceiptProps) {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <div style={{ width: '260px' }}>
-          <div style={{ borderTop: '1px solid #ddd', paddingTop: '12px', space: '4px' }}>
+          <div style={{ borderTop: '1px solid #ddd', paddingTop: '12px', gap: '4px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666', fontSize: '13px', marginBottom: '6px' }}>
               <span>ລາຄາກ່ອນຫຼຸດ</span><span>{subtotal.toLocaleString()} ₭</span>
             </div>

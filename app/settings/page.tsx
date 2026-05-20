@@ -1,5 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
+
+
 import { useState, useEffect, useRef } from 'react';
 import { connectSerial, disconnectSerial, buildReceiptBytes, sendToSerial, sendToNetwork, type CutMode } from '@/lib/escpos';
 import { loadVATSettings, saveVATSettings, type VATSettings } from '@/lib/vat';
@@ -138,13 +142,13 @@ export default function SettingsPage() {
       if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
       const { BrowserMultiFormatReader } = await import('@zxing/library');
       const reader = new BrowserMultiFormatReader();
-      reader.decodeFromVideoElement(videoRef.current!, (result) => {
+      reader.decodeFromVideoElement(videoRef.current!).then((result) => {
         if (result) {
           setTestScanResult(`✅ Camera: ${result.getText()}`);
           stream.getTracks().forEach(t => t.stop());
           streamRef.current = null; setCameraActive(false); reader.reset();
         }
-      });
+      }).catch(() => {});
     } catch { setTestScanResult('❌ Camera: ບໍ່ສາມາດເຂົ້າເຖິງໄດ້'); }
   };
 

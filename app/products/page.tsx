@@ -1,5 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
+
+
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase, uploadProductImage, deleteProductImage, type Product, type Unit } from '@/lib/supabase';
 import { exportProductsToExcel, parseProductsFromExcel, type ImportedProduct, type ImportResult } from '@/lib/excel';

@@ -1,5 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
+
+
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, type Order, type OrderItem } from '@/lib/supabase';
 import { exportOrdersToExcel } from '@/lib/excel';

@@ -1,3 +1,13 @@
+// Web Serial API type declarations
+declare global {
+  interface SerialPort {
+    open(options: { baudRate: number }): Promise<void>;
+    close(): Promise<void>;
+    readable: ReadableStream;
+    writable: WritableStream;
+  }
+}
+
 // ESC/POS Commands
 export const ESC = 0x1b;
 export const GS = 0x1d;
@@ -29,8 +39,6 @@ export async function connectSerial(): Promise<boolean> {
     }
     serialPort = await (navigator as unknown as { serial: { requestPort: () => Promise<SerialPort> } }).serial.requestPort();
     await serialPort.open({ baudRate: 9600 });
-    const textEncoder = new TextEncoderStream();
-    textEncoder.readable.pipeTo(serialPort.writable as unknown as WritableStream<string>);
     serialWriter = (serialPort.writable as unknown as WritableStream<Uint8Array>).getWriter();
     return true;
   } catch (e) {

@@ -4,7 +4,7 @@ import { type Order, type Product } from '@/lib/supabase';
 
 // ---- Export Orders ----
 export function exportOrdersToExcel(orders: Order[], filename = 'orders') {
-  const rows = orders.flatMap((order) => {
+  const rows: Record<string, unknown>[] = orders.flatMap((order): Record<string, unknown>[] => {
     if (!order.order_items || order.order_items.length === 0) {
       return [{
         'ລະຫັດບິນ': order.id.slice(-8).toUpperCase(),
