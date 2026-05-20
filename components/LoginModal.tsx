@@ -16,13 +16,12 @@ export default function LoginModal({ onClose }: LoginModalProps) {
 
   const handlePin = (digit: string) => {
     if (loading) return;
-    if (pin.length >= 6) return;
+    if (pin.length >= 4) return;
     const newPin = pin + digit;
     setPin(newPin);
     setError('');
-    if (newPin.length >= 4) {
-      // small delay to show 4th dot before loading
-      setTimeout(() => tryLogin(newPin), 100);
+    if (newPin.length === 4) {
+      setTimeout(() => tryLogin(newPin), 150);
     }
   };
 
