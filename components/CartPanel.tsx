@@ -102,38 +102,50 @@ export default function CartPanel({
     <>
       <div className="flex flex-col w-full h-full bg-white">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-2">
-            {isMobile && (
-              <button onClick={onMobileClose} className="text-gray-400 p-1 mr-1">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
-                </svg>
+        {/* Header - only show on desktop (mobile has its own header in page.tsx) */}
+        {!isMobile && (
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700">ກະຕ່າ</span>
+              {totalQty > 0 && <span className="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full">{totalQty}</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={onToggleHeldPanel}
+                className={`relative flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium
+                  ${showHeldPanel ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                Hold
+                {heldOrders.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {heldOrders.length}
+                  </span>
+                )}
               </button>
-            )}
-            <span className="text-sm font-semibold text-gray-700">ກະຕ່າ</span>
-            {totalQty > 0 && (
-              <span className="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full">{totalQty}</span>
-            )}
+              {!isEmpty && <button onClick={onClear} className="text-xs text-red-400 font-medium">ລ້າງ</button>}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={onToggleHeldPanel}
-              className={`relative flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium
-                ${showHeldPanel ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
-              </svg>
-              Hold
-              {heldOrders.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                  {heldOrders.length}
-                </span>
-              )}
-            </button>
-            {!isEmpty && <button onClick={onClear} className="text-xs text-red-400 font-medium">ລ້າງ</button>}
+        )}
+
+        {/* Mobile header actions */}
+        {isMobile && (
+          <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 shrink-0">
+            <div className="flex items-center gap-2">
+              <button onClick={onToggleHeldPanel}
+                className={`relative flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium
+                  ${showHeldPanel ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                </svg>
+                Hold
+                {heldOrders.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {heldOrders.length}
+                  </span>
+                )}
+              </button>
+            </div>
+            {!isEmpty && <button onClick={onClear} className="text-xs text-red-400 font-medium">ລ້າງທັງໝົດ</button>}
           </div>
-        </div>
+        )}
 
         {/* Hold panel */}
         {showHeldPanel && heldOrders.length > 0 && (
@@ -153,7 +165,7 @@ export default function CartPanel({
           </div>
         )}
 
-        {/* Items — scrollable middle */}
+        {/* Items */}
         <div className="flex-1 overflow-y-auto min-h-0 px-4 py-2">
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-300 py-8">
@@ -181,9 +193,9 @@ export default function CartPanel({
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => onChangeQty(key, -1)} className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 text-lg font-light">−</button>
+                      <button onClick={() => onChangeQty(key, -1)} className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 text-lg">−</button>
                       <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
-                      <button onClick={() => onChangeQty(key, 1)} className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 text-lg font-light">+</button>
+                      <button onClick={() => onChangeQty(key, 1)} className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 text-lg">+</button>
                     </div>
                   </li>
                 );
@@ -192,7 +204,7 @@ export default function CartPanel({
           )}
         </div>
 
-        {/* Discount section */}
+        {/* Discount */}
         {!isEmpty && (
           <div className="px-4 py-2 border-t border-gray-50 shrink-0">
             <button onClick={() => setShowDiscountPanel(!showDiscountPanel)}
@@ -272,25 +284,22 @@ export default function CartPanel({
           </div>
         )}
 
-        {/* ===== FOOTER — sticky bottom ===== */}
-        <div className="shrink-0 bg-white border-t border-gray-100 px-4 pt-3 pb-3 sticky bottom-0"
-          style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
-          {/* Summary */}
+        {/* Footer */}
+        <div className="shrink-0 bg-white border-t border-gray-100 px-4 pt-3 pb-3">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm font-medium text-gray-600">ລວມທັງໝົດ</span>
             <span className="text-xl font-bold text-gray-900">{grandTotal.toLocaleString()} ₭</span>
           </div>
-          {/* Buttons */}
           <div className="flex gap-2">
             <button disabled={isEmpty} onClick={handleHold}
-              className={`w-20 py-3.5 rounded-xl text-sm font-medium flex items-center justify-center transition-all
-                ${showHoldInput ? 'bg-amber-500 text-white' : 'border-2 border-gray-200 text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              className={`w-14 h-12 rounded-xl flex items-center justify-center transition-all
+                ${showHoldInput ? 'bg-amber-500 text-white' : 'border-2 border-gray-200 text-gray-600 disabled:opacity-30'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
               </svg>
             </button>
             <button disabled={isEmpty} onClick={() => setShowModal(true)}
-              className="flex-1 py-3.5 rounded-xl text-base font-bold bg-gray-900 text-white disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+              className="flex-1 h-12 rounded-xl text-base font-bold bg-gray-900 text-white disabled:opacity-30 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3z"/>
               </svg>

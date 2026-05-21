@@ -30,7 +30,8 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [showHeldPanel, setShowHeldPanel] = useState(false);
-  const [showMobileCart, setShowMobileCart] = useState(false);
+  // Mobile: 'products' or 'cart'
+  const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
   const barcodeInputRef = useRef<string>('');
   const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,13 +92,13 @@ export default function POSPage() {
     setCart((prev) => prev.map((i) => cartKey(i) === key ? { ...i, quantity: i.quantity + delta } : i).filter((i) => i.quantity > 0));
   };
 
-  const clearCart = () => { setCart([]); setShowMobileCart(false); };
+  const clearCart = () => { setCart([]); setMobileView('products'); };
 
   const holdOrder = (label?: string) => {
     if (cart.length === 0) return;
     const newHeld: HeldOrder = { id: Date.now().toString(), label: label || `ບິນ ${heldOrders.length + 1}`, cart: [...cart], createdAt: new Date() };
     saveHeldOrders([...heldOrders, newHeld]);
-    setCart([]); setShowHeldPanel(false); setShowMobileCart(false);
+    setCart([]); setShowHeldPanel(false); setMobileView('products');
   };
 
   const resumeOrder = (held: HeldOrder) => {
@@ -118,14 +119,12 @@ export default function POSPage() {
   );
 
   return (
-    <div className="flex flex-1 min-w-0 bg-gray-50 overflow-hidden relative">
+    <div className="flex flex-1 min-w-0 overflow-hidden relative">
 
-      {/* Product Grid — always full width on mobile */}
-      <div className="flex flex-1 min-w-0 overflow-hidden">
+      {/* ── Desktop: side by side ── */}
+      <div className="hidden md:flex flex-1 min-w-0 overflow-hidden">
         <ProductGrid products={products} onAdd={addToCart} />
       </div>
-
-      {/* Desktop Cart */}
       <div className="hidden md:flex w-80 shrink-0 bg-white border-l border-gray-100">
         <CartPanel
           products={products} cart={cart}
@@ -137,48 +136,58 @@ export default function POSPage() {
         />
       </div>
 
-      {/* Mobile Cart — bottom sheet, height avoids bottom nav (64px) */}
-      {showMobileCart && (
-        <div className="md:hidden fixed inset-0 z-30 flex flex-col justify-end">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileCart(false)}/>
-          {/* Sheet — leave 64px gap at bottom for nav bar */}
-          <div className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
-            style={{ height: 'calc(100dvh - 56px)' }}>
-            {/* Drag handle */}
-            <div className="flex justify-center pt-2.5 pb-1 shrink-0">
-              <div className="w-10 h-1 bg-gray-200 rounded-full"/>
+      {/* ── Mobile: toggle between products and cart ── */}
+      <div className="md:hidden flex flex-1 min-w-0 overflow-hidden flex-col">
+        {mobileView === 'products' ? (
+          <>
+            <ProductGrid products={products} onAdd={(item) => { addToCart(item); }} />
+            {/* Mobile cart button */}
+            <button
+              onClick={() => setMobileView('cart')}
+              className="fixed z-20 bg-gray-900 text-white shadow-xl flex items-center gap-2 active:scale-95 transition-all rounded-2xl px-4"
+              style={{ height: 52, bottom: 72, right: 16 }}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13M10 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm7 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
+              </svg>
+              <span className="text-sm font-semibold">ກະຕ່າ</span>
+              {totalQty > 0 && (
+                <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {totalQty}
+                </span>
+              )}
+            </button>
+          </>
+        ) : (
+          /* Full screen cart on mobile */
+          <div className="flex flex-col flex-1 overflow-hidden bg-white">
+            {/* Back button */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 shrink-0">
+              <button onClick={() => setMobileView('products')}
+                className="flex items-center gap-2 text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span className="text-sm font-medium">ກັບ</span>
+              </button>
+              <span className="text-base font-semibold text-gray-800 flex-1 text-center">ກະຕ່າ</span>
+              <div className="w-12"/>
             </div>
-            <CartPanel
-              products={products} cart={cart}
-              onChangeQty={changeQty} onClear={clearCart}
-              onHold={holdOrder} heldOrders={heldOrders}
-              onResume={resumeOrder} onDeleteHeld={deleteHeldOrder}
-              showHeldPanel={showHeldPanel}
-              onToggleHeldPanel={() => setShowHeldPanel(!showHeldPanel)}
-              onMobileClose={() => setShowMobileCart(false)}
-              isMobile
-            />
+            <div className="flex-1 overflow-hidden">
+              <CartPanel
+                products={products} cart={cart}
+                onChangeQty={changeQty} onClear={clearCart}
+                onHold={holdOrder} heldOrders={heldOrders}
+                onResume={resumeOrder} onDeleteHeld={deleteHeldOrder}
+                showHeldPanel={showHeldPanel}
+                onToggleHeldPanel={() => setShowHeldPanel(!showHeldPanel)}
+                onMobileClose={() => setMobileView('products')}
+                isMobile
+              />
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Mobile FAB — floating cart button above bottom nav */}
-      {!showMobileCart && (
-        <button onClick={() => setShowMobileCart(true)}
-          className="md:hidden fixed z-20 bg-gray-900 text-white rounded-2xl shadow-xl flex items-center justify-center active:scale-95 transition-all"
-          style={{ width: 56, height: 56, bottom: 76, right: 16 }}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13M10 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm7 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
-          </svg>
-          {totalQty > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-              {totalQty}
-            </span>
-          )}
-        </button>
-      )}
+        )}
+      </div>
     </div>
   );
 }

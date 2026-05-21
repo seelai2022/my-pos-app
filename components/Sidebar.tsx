@@ -35,16 +35,6 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/promotions',
-    label: 'ໂປໂມ',
-    icon: (active: boolean) => (
-      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 0 1 0 2.828l-7 7a2 2 0 0 1-2.828 0l-7-7A2 2 0 0 1 3 12V7a4 4 0 0 1 4-4z"/>
-      </svg>
-    ),
-  },
-  {
     href: '/dashboard',
     label: 'Report',
     icon: (active: boolean) => (
@@ -55,40 +45,31 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/staff',
-    label: 'ພະນັກ',
-    adminOnly: true,
+    href: '/promotions',
+    label: 'ໂປໂມ',
     icon: (active: boolean) => (
       <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/settings',
-    label: 'ຕັ້ງຄ່າ',
-    adminOnly: true,
-    icon: (active: boolean) => (
-      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 0 1 0 2.828l-7 7a2 2 0 0 1-2.828 0l-7-7A2 2 0 0 1 3 12V7a4 4 0 0 1 4-4z"/>
       </svg>
     ),
   },
 ];
 
+const MORE_ITEMS = [
+  { href: '/staff', label: 'ພະນັກ', adminOnly: true },
+  { href: '/settings', label: 'ຕັ້ງຄ່າ', adminOnly: true },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { staff, logout } = useAuth();
-  const visibleItems = NAV_ITEMS.filter(item => !item.adminOnly || staff?.role === 'admin');
+  const isPos = pathname === '/';
 
   return (
     <>
       {/* ── Desktop Sidebar ── */}
       <nav className="hidden md:flex w-44 shrink-0 bg-white border-r border-gray-100 flex-col py-5 shadow-sm">
-        {/* Logo */}
         <div className="px-4 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center shrink-0">
@@ -99,23 +80,20 @@ export default function Sidebar() {
             <span className="text-sm font-semibold text-gray-800">POS System</span>
           </div>
         </div>
-
-        {/* Nav items */}
         <div className="flex-1 space-y-0.5">
-          {visibleItems.map((item) => {
+          {[...NAV_ITEMS, ...MORE_ITEMS.filter(i => !i.adminOnly || staff?.role === 'admin')].map((item) => {
             const isActive = pathname === item.href;
+            const icon = 'icon' in item ? (item as typeof NAV_ITEMS[0]).icon(isActive) : null;
             return (
               <a key={item.href} href={item.href}
                 className={`flex items-center gap-3 mx-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
                   ${isActive ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'}`}>
-                {item.icon(isActive)}
+                {icon}
                 <span>{item.label}</span>
               </a>
             );
           })}
         </div>
-
-        {/* Staff info */}
         {staff && (
           <div className="mx-2 mt-4 border-t border-gray-100 pt-4">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 mb-1">
@@ -141,32 +119,34 @@ export default function Sidebar() {
       </nav>
 
       {/* ── Mobile Bottom Navigation ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
-        <div className="flex items-stretch">
-          {visibleItems.slice(0, 5).map((item) => {
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex items-stretch h-14">
+          {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             return (
               <a key={item.href} href={item.href}
-                className={`flex-1 flex flex-col items-center justify-center py-2 px-1 transition-colors min-h-[56px]
+                className={`flex-1 flex flex-col items-center justify-center py-1 px-0.5 transition-colors
                   ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
-                <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-gray-900 text-white' : ''}`}>
+                <div className={`p-1 rounded-lg transition-all ${isActive ? 'bg-gray-900 text-white' : ''}`}>
                   {item.icon(isActive)}
                 </div>
-                <span className={`text-xs mt-0.5 font-medium ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                <span className={`text-xs mt-0.5 font-medium leading-none ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
                   {item.label}
                 </span>
               </a>
             );
           })}
-          {/* More / Profile button */}
-          <button
-            onClick={logout}
-            className="flex-1 flex flex-col items-center justify-center py-2 px-1 text-gray-400 min-h-[56px]">
+          {/* Profile/Logout */}
+          <button onClick={logout}
+            className="flex-1 flex flex-col items-center justify-center py-1 px-0.5 text-gray-400">
             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold
               ${staff?.role === 'admin' ? 'bg-gray-700' : 'bg-blue-400'}`}>
               {staff?.name.charAt(0) ?? '?'}
             </div>
-            <span className="text-xs mt-0.5 font-medium text-gray-400">{staff?.name.split(' ')[0] ?? 'ອອກ'}</span>
+            <span className="text-xs mt-0.5 font-medium leading-none text-gray-400">
+              {staff?.name.split(' ')[0] ?? 'ອອກ'}
+            </span>
           </button>
         </div>
       </nav>
