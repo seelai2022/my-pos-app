@@ -273,7 +273,8 @@ export default function CartPanel({
         )}
 
         {/* ===== FOOTER — sticky bottom ===== */}
-        <div className="shrink-0 bg-white border-t border-gray-100 px-4 pt-3 pb-4 sticky bottom-0">
+        <div className="shrink-0 bg-white border-t border-gray-100 px-4 pt-3 pb-3 sticky bottom-0"
+          style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
           {/* Summary */}
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm font-medium text-gray-600">ລວມທັງໝົດ</span>
