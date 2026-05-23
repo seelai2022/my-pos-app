@@ -54,6 +54,57 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+];
+  {
+    href: '/',
+    label: 'ຂາຍ',
+    icon: (active: boolean) => (
+      <svg className="w-5 h-5 shrink-0" fill={active ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 0 : 2}
+          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13M10 19a1 1 0 1 0 2 0 1 1 0 0 0-2 0zm7 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0z"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/products',
+    label: 'ສິນຄ້າ',
+    icon: (active: boolean) => (
+      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zm-8-4v4M8 3v4m8-4v4"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/orders',
+    label: 'ອໍເດີ',
+    icon: (active: boolean) => (
+      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard',
+    label: 'Report',
+    icon: (active: boolean) => (
+      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/quotations',
+    label: 'ໃບສະເໜີ',
+    icon: (active: boolean) => (
+      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/>
+      </svg>
+    ),
+  },
   {
     href: '/promotions',
     label: 'ໂປໂມ',
@@ -67,6 +118,7 @@ const NAV_ITEMS = [
 ];
 
 const MORE_ITEMS = [
+  { href: '/promotions', label: 'ໂປໂມ', adminOnly: false },
   { href: '/staff', label: 'ພະນັກ', adminOnly: true },
   { href: '/settings', label: 'ຕັ້ງຄ່າ', adminOnly: true },
 ];
