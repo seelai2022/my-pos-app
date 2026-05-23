@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import BarcodeScanner from '@/components/BarcodeScanner';
 
 interface QuotationItem {
   id: string;
@@ -13,6 +14,14 @@ interface QuotationItem {
   unit: string;
   price: number;
   total: number;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  barcode: string | null;
+  emoji: string | null;
 }
 
 interface Quotation {
@@ -35,9 +44,9 @@ interface Quotation {
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  draft: { label: 'ຮ່າງ', color: 'bg-gray-100 text-gray-600' },
-  sent: { label: 'ສົ່ງແລ້ວ', color: 'bg-blue-50 text-blue-600' },
-  accepted: { label: 'ຍອມຮັບ', color: 'bg-green-50 text-green-600' },
+  draft:    { label: 'ຮ່າງ',     color: 'bg-gray-100 text-gray-600' },
+  sent:     { label: 'ສົ່ງແລ້ວ', color: 'bg-blue-50 text-blue-600' },
+  accepted: { label: 'ຍອມຮັບ',  color: 'bg-green-50 text-green-600' },
   rejected: { label: 'ປະຕິເສດ', color: 'bg-red-50 text-red-600' },
 };
 
@@ -51,10 +60,12 @@ const emptyItem = (): QuotationItem => ({ id: Date.now().toString(), name: '', q
 export default function QuotationsPage() {
   const { staff } = useAuth();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editQ, setEditQ] = useState<Quotation | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   // Form state
   const [number, setNumber] = useState('');
@@ -63,7 +74,7 @@ export default function QuotationsPage() {
   const [customerAddress, setCustomerAddress] = useState('');
   const [items, setItems] = useState<QuotationItem[]>([emptyItem()]);
   const [discount, setDiscount] = useState(0);
-  const [vatRate, setVatRate] = useState(0);
+  const [vatRate, setVatRate] = useState(10);
   const [useVat, setUseVat] = useState(false);
   const [notes, setNotes] = useState('');
   const [validDays, setValidDays] = useState(30);
@@ -73,14 +84,18 @@ export default function QuotationsPage() {
   const vatAmount = useVat ? Math.round(afterDiscount * vatRate / 100) : 0;
   const total = afterDiscount + vatAmount;
 
-  const fetchQuotations = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('quotations').select('*').order('created_at', { ascending: false });
-    setQuotations(data ?? []);
+    const [{ data: qData }, { data: pData }] = await Promise.all([
+      supabase.from('quotations').select('*').order('created_at', { ascending: false }),
+      supabase.from('products').select('id, name, price, barcode, emoji').order('name'),
+    ]);
+    setQuotations(qData ?? []);
+    setProducts(pData ?? []);
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchQuotations(); }, [fetchQuotations]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const openAdd = () => {
     setEditQ(null);
@@ -106,9 +121,53 @@ export default function QuotationsPage() {
     setItems(prev => prev.map(item => {
       if (item.id !== id) return item;
       const updated = { ...item, [field]: value };
-      updated.total = updated.qty * updated.price;
+      updated.total = Number(updated.qty) * Number(updated.price);
       return updated;
     }));
+  };
+
+  const handleProductSelect = (itemId: string, productName: string) => {
+    const found = products.find(p => p.name === productName);
+    setItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item;
+      const price = found ? found.price : item.price;
+      return { ...item, name: productName, price, total: item.qty * price };
+    }));
+  };
+
+  // Handle barcode scan — add product to items list
+  const handleScanned = (code: string) => {
+    setShowScanner(false);
+    const product = products.find(p => p.barcode === code);
+    if (!product) {
+      alert(`ບໍ່ພົບສິນຄ້າ barcode: ${code}`);
+      return;
+    }
+    // Check if already in items
+    const existing = items.find(i => i.name === product.name);
+    if (existing) {
+      setItems(prev => prev.map(i =>
+        i.name === product.name
+          ? { ...i, qty: i.qty + 1, total: (i.qty + 1) * i.price }
+          : i
+      ));
+    } else {
+      // Replace empty item or add new
+      const emptyIdx = items.findIndex(i => i.name === '');
+      const newItem: QuotationItem = {
+        id: Date.now().toString(),
+        name: product.name,
+        qty: 1,
+        unit: 'ອັນ',
+        price: product.price,
+        total: product.price,
+      };
+      if (emptyIdx >= 0) {
+        setItems(prev => prev.map((i, idx) => idx === emptyIdx ? newItem : i));
+      } else {
+        setItems(prev => [...prev, newItem]);
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -127,18 +186,18 @@ export default function QuotationsPage() {
     }
     setSaving(false);
     setShowForm(false);
-    fetchQuotations();
+    fetchData();
   };
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from('quotations').update({ status }).eq('id', id);
-    fetchQuotations();
+    fetchData();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('ຕ້ອງການລຶບ Quotation ນີ້ແທ້ບໍ?')) return;
     await supabase.from('quotations').delete().eq('id', id);
-    fetchQuotations();
+    fetchData();
   };
 
   const handlePrint = (q: Quotation) => {
@@ -150,60 +209,44 @@ export default function QuotationsPage() {
     const validUntil = new Date(date.getTime() + q.valid_days * 24 * 60 * 60 * 1000);
 
     const html = `<!DOCTYPE html>
-<html lang="lo">
-<head>
-<meta charset="UTF-8"/>
-<title>Quotation ${q.number}</title>
+<html lang="lo"><head><meta charset="UTF-8"/><title>Quotation ${q.number}</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Noto Sans Lao', sans-serif; font-size: 13px; color: #111; padding: 20mm; }
-  .header { display: flex; justify-content: space-between; margin-bottom: 24px; }
-  .store-name { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-  .store-info { color: #666; font-size: 12px; line-height: 1.6; }
-  .qt-title { font-size: 18px; font-weight: 600; color: #111; }
-  .qt-number { color: #666; font-size: 12px; margin-top: 4px; }
-  .divider { border-top: 2px solid #111; margin: 16px 0 8px; }
-  .divider-light { border-top: 1px solid #eee; margin: 8px 0; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  .info-label { font-size: 11px; color: #888; margin-bottom: 2px; }
-  .info-value { font-weight: 500; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-  thead tr { border-bottom: 2px solid #111; }
-  th { text-align: left; padding: 8px 6px; font-size: 11px; color: #888; font-weight: 500; }
-  th:last-child, td:last-child { text-align: right; }
-  th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: center; }
-  td { padding: 10px 6px; border-bottom: 1px solid #f0f0f0; }
-  td:nth-child(2), td:nth-child(3), td:nth-child(4) { text-align: center; }
-  .summary { display: flex; justify-content: flex-end; }
-  .summary-table { width: 260px; }
-  .summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
-  .summary-total { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; border-top: 2px solid #111; padding-top: 8px; margin-top: 4px; }
-  .notes { margin-top: 24px; padding: 12px; background: #f9f9f9; border-radius: 8px; }
-  .notes-label { font-size: 11px; color: #888; margin-bottom: 4px; }
-  .footer { margin-top: 40px; display: flex; justify-content: space-between; }
-  .sign-box { text-align: center; width: 160px; }
-  .sign-line { border-top: 1px solid #333; margin-top: 40px; padding-top: 6px; font-size: 12px; color: #666; }
-  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #f0f0f0; }
-  @media print { body { padding: 15mm; } @page { size: A4; margin: 0; } }
-</style>
-</head>
-<body>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans Lao',Arial,sans-serif;font-size:13px;color:#111;padding:20mm}
+.header{display:flex;justify-content:space-between;margin-bottom:24px}
+.store-name{font-size:22px;font-weight:700;margin-bottom:4px}
+.store-info{color:#666;font-size:12px;line-height:1.6}
+.qt-title{font-size:18px;font-weight:600}
+.qt-number{color:#666;font-size:12px;margin-top:4px}
+.divider{border-top:2px solid #111;margin:16px 0 8px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.info-label{font-size:11px;color:#888;margin-bottom:2px}
+.info-value{font-weight:500}
+table{width:100%;border-collapse:collapse;margin-bottom:24px}
+thead tr{border-bottom:2px solid #111}
+th{text-align:left;padding:8px 6px;font-size:11px;color:#888;font-weight:500}
+th:last-child,td:last-child{text-align:right}
+th:nth-child(3),th:nth-child(4),td:nth-child(3),td:nth-child(4){text-align:center}
+td{padding:10px 6px;border-bottom:1px solid #f0f0f0}
+.summary{display:flex;justify-content:flex-end}
+.summary-table{width:260px}
+.summary-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.summary-total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:2px solid #111;padding-top:8px;margin-top:4px}
+.notes{margin-top:24px;padding:12px;background:#f9f9f9;border-radius:8px}
+.footer{margin-top:40px;display:flex;justify-content:space-between}
+.sign-box{text-align:center;width:160px}
+.sign-line{border-top:1px solid #333;margin-top:40px;padding-top:6px;font-size:12px;color:#666}
+@media print{body{padding:15mm}@page{size:A4;margin:0}}
+</style></head><body>
 <div class="header">
-  <div>
-    <div class="store-name">${storeName}</div>
-    <div class="store-info">${storeAddress}<br>${storePhone}</div>
-  </div>
+  <div><div class="store-name">${storeName}</div><div class="store-info">${storeAddress}<br>${storePhone}</div></div>
   <div style="text-align:right">
     <div class="qt-title">ໃບສະເໜີລາຄາ</div>
     <div class="qt-number">#${q.number}</div>
-    <div class="qt-number" style="margin-top:4px">
-      <span class="status-badge">${STATUS_LABEL[q.status]?.label || q.status}</span>
-    </div>
+    <div class="qt-number" style="margin-top:4px">${STATUS_LABEL[q.status]?.label || q.status}</div>
   </div>
 </div>
-
-<div class="divider"/>
-
+<div class="divider"></div>
 <div class="info-grid">
   <div>
     <div class="info-label">ລູກຄ້າ</div>
@@ -212,29 +255,21 @@ export default function QuotationsPage() {
     ${q.customer_address ? `<div style="color:#666;font-size:12px">${q.customer_address}</div>` : ''}
   </div>
   <div style="text-align:right">
-    <div class="info-label">ວັນທີ</div>
-    <div class="info-value">${date.toLocaleDateString('lo-LA')}</div>
+    <div class="info-label">ວັນທີ</div><div class="info-value">${date.toLocaleDateString('lo-LA')}</div>
     <div class="info-label" style="margin-top:8px">ໝົດອາຍຸ</div>
     <div class="info-value">${validUntil.toLocaleDateString('lo-LA')} (${q.valid_days} ວັນ)</div>
   </div>
 </div>
-
 <table>
-  <thead>
-    <tr>
-      <th style="width:40px">#</th>
-      <th>ລາຍການ</th>
-      <th style="width:60px">ຈຳນວນ</th>
-      <th style="width:60px">ຫນ່ວຍ</th>
-      <th style="width:100px;text-align:right">ລາຄາ/ຫນ່ວຍ</th>
-      <th style="width:110px">ລວມ</th>
-    </tr>
-  </thead>
+  <thead><tr>
+    <th style="width:40px">#</th><th>ລາຍການ</th>
+    <th style="width:60px">ຈຳນວນ</th><th style="width:60px">ຫນ່ວຍ</th>
+    <th style="width:100px;text-align:right">ລາຄາ/ຫນ່ວຍ</th><th style="width:110px">ລວມ</th>
+  </tr></thead>
   <tbody>
     ${q.items.map((item, idx) => `
     <tr>
-      <td style="color:#888">${idx + 1}</td>
-      <td>${item.name}</td>
+      <td style="color:#888">${idx+1}</td><td>${item.name}</td>
       <td style="text-align:center">${item.qty.toLocaleString()}</td>
       <td style="text-align:center">${item.unit}</td>
       <td style="text-align:right">${item.price.toLocaleString()} ₭</td>
@@ -242,35 +277,21 @@ export default function QuotationsPage() {
     </tr>`).join('')}
   </tbody>
 </table>
-
-<div class="summary">
-  <div class="summary-table">
-    <div class="summary-row"><span style="color:#888">ລາຄາກ່ອນຫຼຸດ</span><span>${q.subtotal.toLocaleString()} ₭</span></div>
-    ${q.discount > 0 ? `<div class="summary-row" style="color:#16a34a"><span>ສ່ວນຫຼຸດ</span><span>-${q.discount.toLocaleString()} ₭</span></div>` : ''}
-    ${q.vat_rate > 0 ? `<div class="summary-row" style="color:#2563eb"><span>VAT ${q.vat_rate}%</span><span>+${q.vat_amount.toLocaleString()} ₭</span></div>` : ''}
-    <div class="summary-total"><span>ລວມທັງໝົດ</span><span>${q.total.toLocaleString()} ₭</span></div>
-  </div>
-</div>
-
-${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</div><div>${q.notes}</div></div>` : ''}
-
+<div class="summary"><div class="summary-table">
+  <div class="summary-row"><span style="color:#888">ລາຄາກ່ອນຫຼຸດ</span><span>${q.subtotal.toLocaleString()} ₭</span></div>
+  ${q.discount > 0 ? `<div class="summary-row" style="color:#16a34a"><span>ສ່ວນຫຼຸດ</span><span>-${q.discount.toLocaleString()} ₭</span></div>` : ''}
+  ${q.vat_rate > 0 ? `<div class="summary-row" style="color:#2563eb"><span>VAT ${q.vat_rate}%</span><span>+${q.vat_amount.toLocaleString()} ₭</span></div>` : ''}
+  <div class="summary-total"><span>ລວມທັງໝົດ</span><span>${q.total.toLocaleString()} ₭</span></div>
+</div></div>
+${q.notes ? `<div class="notes"><div style="font-size:11px;color:#888;margin-bottom:4px">ຫມາຍເຫດ</div><div>${q.notes}</div></div>` : ''}
 <div class="footer">
-  <div class="sign-box">
-    <div class="sign-line">ຜູ້ສະເໜີລາຄາ</div>
-  </div>
-  <div class="sign-box">
-    <div class="sign-line">ລູກຄ້າຮັບຮອງ</div>
-  </div>
+  <div class="sign-box"><div class="sign-line">ຜູ້ສະເໜີລາຄາ</div></div>
+  <div class="sign-box"><div class="sign-line">ລູກຄ້າຮັບຮອງ</div></div>
 </div>
-</body>
-</html>`;
+</body></html>`;
 
     const win = window.open('', '_blank');
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-      win.onload = () => { win.print(); };
-    }
+    if (win) { win.document.write(html); win.document.close(); win.onload = () => { win.print(); }; }
   };
 
   return (
@@ -318,8 +339,7 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button onClick={() => handlePrint(q)}
-                      className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors"
-                      title="PDF/Print">
+                      className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors" title="Print/PDF">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                           d="M17 17h2a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2m2 4h6a2 2 0 0 0 2-2v-4H7v4a2 2 0 0 0 2 2zm8-12V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4h10z"/>
@@ -329,9 +349,8 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
                     <button onClick={() => handleDelete(q.id)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1">ລຶບ</button>
                   </div>
                 </div>
-                {/* Status buttons */}
                 <div className="flex gap-1.5 mt-3 flex-wrap">
-                  {['draft', 'sent', 'accepted', 'rejected'].map(s => (
+                  {['draft','sent','accepted','rejected'].map(s => (
                     <button key={s} onClick={() => updateStatus(q.id, s)}
                       className={`text-xs px-2.5 py-1 rounded-lg border transition-all
                         ${q.status === s ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
@@ -402,8 +421,19 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-medium text-gray-600">ລາຍການສິນຄ້າ</label>
-                  <button onClick={() => setItems(prev => [...prev, emptyItem()])}
-                    className="text-xs text-blue-500 hover:text-blue-700 font-medium">+ ເພີ່ມລາຍການ</button>
+                  <div className="flex items-center gap-2">
+                    {/* Scan button */}
+                    <button onClick={() => setShowScanner(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-xl hover:bg-gray-700 active:scale-95 transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M3 9V5a2 2 0 0 1 2-2h4M3 15v4a2 2 0 0 0 2 2h4M21 9V5a2 2 0 0 0-2-2h-4M21 15v4a2 2 0 0 1-2 2h-4"/>
+                      </svg>
+                      ສະແກນ
+                    </button>
+                    <button onClick={() => setItems(prev => [...prev, emptyItem()])}
+                      className="text-xs text-blue-500 hover:text-blue-700 font-medium">+ ເພີ່ມ</button>
+                  </div>
                 </div>
 
                 {/* Header */}
@@ -418,16 +448,26 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
                 <div className="space-y-2">
                   {items.map((item) => (
                     <div key={item.id} className="grid grid-cols-12 gap-1.5 items-center">
-                      <input type="text" value={item.name} onChange={e => updateItem(item.id, 'name', e.target.value)}
-                        placeholder="ຊື່ລາຍການ"
-                        className="col-span-4 border border-gray-200 rounded-xl px-2.5 py-2 text-xs outline-none focus:border-gray-400"/>
-                      <input type="number" value={item.qty} onChange={e => updateItem(item.id, 'qty', Number(e.target.value))}
-                        min={1}
+                      <div className="col-span-4">
+                        <input type="text" value={item.name}
+                          onChange={e => handleProductSelect(item.id, e.target.value)}
+                          list={`products-${item.id}`}
+                          placeholder="ຊື່ລາຍການ"
+                          className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-xs outline-none focus:border-gray-400"/>
+                        <datalist id={`products-${item.id}`}>
+                          {products.map(p => (
+                            <option key={p.id} value={p.name}/>
+                          ))}
+                        </datalist>
+                      </div>
+                      <input type="number" value={item.qty}
+                        onChange={e => updateItem(item.id, 'qty', Number(e.target.value))} min={1}
                         className="col-span-2 border border-gray-200 rounded-xl px-2 py-2 text-xs outline-none focus:border-gray-400 text-center"/>
-                      <input type="text" value={item.unit} onChange={e => updateItem(item.id, 'unit', e.target.value)}
+                      <input type="text" value={item.unit}
+                        onChange={e => updateItem(item.id, 'unit', e.target.value)}
                         className="col-span-2 border border-gray-200 rounded-xl px-2 py-2 text-xs outline-none focus:border-gray-400 text-center"/>
-                      <input type="number" value={item.price} onChange={e => updateItem(item.id, 'price', Number(e.target.value))}
-                        placeholder="0"
+                      <input type="number" value={item.price}
+                        onChange={e => updateItem(item.id, 'price', Number(e.target.value))} placeholder="0"
                         className="col-span-3 border border-gray-200 rounded-xl px-2.5 py-2 text-xs outline-none focus:border-gray-400 text-right"/>
                       <button onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))}
                         className="col-span-1 text-red-400 hover:text-red-600 flex items-center justify-center">
@@ -438,11 +478,18 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
                     </div>
                   ))}
                 </div>
+
+                {/* Scanned items count */}
+                {items.filter(i => i.name !== '').length > 0 && (
+                  <p className="text-xs text-gray-400 mt-2 text-right">
+                    {items.filter(i => i.name !== '').length} ລາຍການ — ລວມ {subtotal.toLocaleString()} ₭
+                  </p>
+                )}
               </div>
 
               {/* Summary */}
               <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex justify-between">
                   <span className="text-sm text-gray-500">ລາຄາກ່ອນຫຼຸດ</span>
                   <span className="text-sm font-medium">{subtotal.toLocaleString()} ₭</span>
                 </div>
@@ -452,8 +499,6 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400 bg-white text-right"/>
                   <span className="text-sm text-gray-400 shrink-0">₭</span>
                 </div>
-
-                {/* VAT toggle */}
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
                     <button onClick={() => setUseVat(!useVat)}
@@ -464,14 +509,13 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
                     {useVat && (
                       <div className="flex items-center gap-1">
                         <input type="number" value={vatRate} onChange={e => setVatRate(Number(e.target.value))}
-                          className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-gray-400 bg-white text-center"/>
+                          className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs outline-none bg-white text-center"/>
                         <span className="text-xs text-gray-400">%</span>
                       </div>
                     )}
                   </div>
                   {useVat && <span className="text-sm text-blue-600">+{vatAmount.toLocaleString()} ₭</span>}
                 </div>
-
                 <div className="border-t border-gray-200 pt-2 flex justify-between">
                   <span className="text-base font-semibold text-gray-800">ລວມທັງໝົດ</span>
                   <span className="text-xl font-bold text-gray-900">{total.toLocaleString()} ₭</span>
@@ -500,6 +544,11 @@ ${q.notes ? `<div class="notes"><div class="notes-label">ຫມາຍເຫດ</
             </div>
           </div>
         </div>
+      )}
+
+      {/* Barcode Scanner */}
+      {showScanner && (
+        <BarcodeScanner onScanned={handleScanned} onClose={() => setShowScanner(false)}/>
       )}
     </div>
   );
