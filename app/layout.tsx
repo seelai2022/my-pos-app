@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <PWARegister />
           <Sidebar />
-          <main className="flex-1 min-w-0 flex overflow-hidden">
+          <main className="flex-1 min-w-0 flex overflow-auto">
             {children}
           </main>
         </AuthProvider>
