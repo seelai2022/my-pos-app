@@ -33,17 +33,20 @@ export default function ProductGrid({ products, onAdd }: ProductGridProps) {
       setSelectedProduct(product);
     } else {
       onAdd({ productId: product.id, unitId: null, name: product.name, unitName: null, price: product.price, quantity: 1 });
+      setQuery('');
     }
   };
 
   const handleUnitSelect = (product: Product, unit: ProductUnit) => {
     onAdd({ productId: product.id, unitId: unit.id, name: product.name, unitName: unit.name, price: unit.price, quantity: 1 });
     setSelectedProduct(null);
+    setQuery('');
   };
 
   const handleDefaultSelect = (product: Product) => {
     onAdd({ productId: product.id, unitId: null, name: product.name, unitName: null, price: product.price, quantity: 1 });
     setSelectedProduct(null);
+    setQuery('');
   };
 
   const handleScanned = (code: string) => {
