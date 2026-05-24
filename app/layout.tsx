@@ -25,17 +25,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="lo" className="min-h-full">
+    <html lang="lo" className="h-full">
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png"/>
         <meta name="apple-mobile-web-app-capable" content="yes"/>
         <meta name="mobile-web-app-capable" content="yes"/>
       </head>
-      <body className="min-h-full flex bg-gray-50">
+      <body className="h-full flex overflow-hidden bg-gray-50">
         <AuthProvider>
           <PWARegister />
           <Sidebar />
-          <main className="flex-1 min-w-0 flex overflow-auto">
+          <main className="flex-1 min-w-0 flex overflow-hidden">
             {children}
           </main>
         </AuthProvider>
