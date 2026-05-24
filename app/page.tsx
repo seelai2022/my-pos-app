@@ -92,6 +92,10 @@ export default function POSPage() {
     setCart((prev) => prev.map((i) => cartKey(i) === key ? { ...i, quantity: i.quantity + delta } : i).filter((i) => i.quantity > 0));
   };
 
+  const changePrice = (key: string, price: number) => {
+    setCart((prev) => prev.map((i) => cartKey(i) === key ? { ...i, price: Math.max(0, price) } : i));
+  };
+
   const clearCart = () => { setCart([]); setMobileView('products'); };
 
   const holdOrder = (label?: string) => {
@@ -128,7 +132,7 @@ export default function POSPage() {
       <div className="hidden md:flex w-80 shrink-0 bg-white border-l border-gray-100">
         <CartPanel
           products={products} cart={cart}
-          onChangeQty={changeQty} onClear={clearCart}
+          onChangeQty={changeQty} onChangePrice={changePrice} onClear={clearCart}
           onHold={holdOrder} heldOrders={heldOrders}
           onResume={resumeOrder} onDeleteHeld={deleteHeldOrder}
           showHeldPanel={showHeldPanel}
@@ -176,7 +180,7 @@ export default function POSPage() {
             <div className="flex-1 overflow-hidden">
               <CartPanel
                 products={products} cart={cart}
-                onChangeQty={changeQty} onClear={clearCart}
+                onChangeQty={changeQty} onChangePrice={changePrice} onClear={clearCart}
                 onHold={holdOrder} heldOrders={heldOrders}
                 onResume={resumeOrder} onDeleteHeld={deleteHeldOrder}
                 showHeldPanel={showHeldPanel}

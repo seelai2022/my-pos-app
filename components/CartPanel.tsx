@@ -25,6 +25,7 @@ interface CartPanelProps {
   products: Product[];
   cart: CartItem[];
   onChangeQty: (key: string, delta: number) => void;
+  onChangePrice: (key: string, price: number) => void;
   onClear: () => void;
   onHold: (label?: string) => void;
   heldOrders: HeldOrder[];
@@ -44,7 +45,7 @@ type DiscountTab = 'manual' | 'promo';
 type ManualDiscountType = 'percent' | 'fixed';
 
 export default function CartPanel({
-  products, cart, onChangeQty, onClear,
+  products, cart, onChangeQty, onChangePrice, onClear,
   onHold, heldOrders, onResume, onDeleteHeld,
   showHeldPanel, onToggleHeldPanel,
   onMobileClose, isMobile,
@@ -188,9 +189,17 @@ export default function CartPanel({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
                       {item.unitName && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{item.unitName}</span>}
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {item.price.toLocaleString()} × {item.quantity} = <span className="text-gray-700 font-semibold">{(item.price*item.quantity).toLocaleString()} ₭</span>
-                      </p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {/* Editable price */}
+                        <input
+                          type="number"
+                          value={item.price}
+                          onChange={e => onChangePrice(key, Number(e.target.value))}
+                          className="w-24 text-xs text-blue-600 font-medium bg-blue-50 border border-blue-100 rounded-lg px-1.5 py-0.5 outline-none focus:border-blue-400 focus:bg-white"
+                          min={0}
+                        />
+                        <span className="text-xs text-gray-400">× {item.quantity} = <span className="text-gray-700 font-semibold">{(item.price*item.quantity).toLocaleString()} ₭</span></span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button onClick={() => onChangeQty(key, -1)} className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 text-lg">−</button>
