@@ -20,6 +20,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
   const [saving, setSaving] = useState(false);
@@ -285,14 +286,38 @@ export default function ProductsPage() {
           </div>
         )}
 
+        {/* Search box */}
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5 mb-4 shadow-sm">
+          <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+          </svg>
+          <input type="text" placeholder="ຄົ້ນຫາສິນຄ້າ, barcode..."
+            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400"/>
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
         {/* Products table */}
         {loading ? (
           <div className="text-center py-20 text-gray-400 text-sm">ກຳລັງໂຫລດ...</div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-            {products.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 text-sm">ຍັງບໍ່ມີສິນຄ້າ</div>
-            ) : (
+            {(() => {
+              const filtered = products.filter(p =>
+                p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (p.barcode && p.barcode.includes(searchQuery))
+              );
+              return filtered.length === 0 ? (
+                <div className="text-center py-16 text-gray-400 text-sm">
+                  {searchQuery ? `ບໍ່ພົບ "${searchQuery}"` : 'ຍັງບໍ່ມີສິນຄ້າ'}
+                </div>
+              ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
@@ -304,7 +329,7 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {products.map((p) => (
+                  {filtered.map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
@@ -351,7 +376,8 @@ export default function ProductsPage() {
                   ))}
                 </tbody>
               </table>
-            )}
+              );
+            })()}
           </div>
         )}
       </div>
