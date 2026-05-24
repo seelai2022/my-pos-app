@@ -48,6 +48,20 @@ export default function ProductGrid({ products, onAdd }: ProductGridProps) {
 
   const handleScanned = (code: string) => {
     setShowScanner(false);
+    // Beep sound
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 1800;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {}
+
     const product = products.find((p) => p.barcode === code);
     if (product) { handleProductClick(product); return; }
     for (const p of products) {
