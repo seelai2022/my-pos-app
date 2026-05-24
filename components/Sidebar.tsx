@@ -69,7 +69,7 @@ export default function Sidebar() {
   return (
     <>
       {/* ── Desktop Sidebar ── */}
-      <nav className="hidden md:flex w-44 shrink-0 bg-white border-r border-gray-100 flex-col py-5 shadow-sm">
+      <nav className="hidden md:flex w-44 shrink-0 bg-white border-r border-gray-100 flex-col py-5 shadow-sm h-screen sticky top-0 overflow-y-auto">
         <div className="px-4 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center shrink-0">

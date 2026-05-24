@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes"/>
         <meta name="mobile-web-app-capable" content="yes"/>
       </head>
-      <body className="h-full flex overflow-hidden bg-gray-50">
+      <body className="h-full flex bg-gray-50">
         <AuthProvider>
           <PWARegister />
           <Sidebar />
