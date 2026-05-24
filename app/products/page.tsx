@@ -2,8 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-
-
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase, uploadProductImage, deleteProductImage, type Product, type Unit } from '@/lib/supabase';
 import { exportProductsToExcel, parseProductsFromExcel, type ImportedProduct, type ImportResult } from '@/lib/excel';
@@ -28,6 +26,10 @@ export default function ProductsPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBarcodeSheet, setShowBarcodeSheet] = useState(false);
+  const [barcodeProducts, setBarcodeProducts] = useState<Product[]>([]);
+  const [labelsPerItem, setLabelsPerItem] = useState(1);
   const [scanTarget, setScanTarget] = useState<'form' | number | null>(null);
   const [showUnitManager, setShowUnitManager] = useState(false);
   const [newUnitName, setNewUnitName] = useState('');
@@ -286,21 +288,49 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Search box */}
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5 mb-4 shadow-sm">
-          <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-          </svg>
-          <input type="text" placeholder="ຄົ້ນຫາສິນຄ້າ, barcode..."
-            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400"/>
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+        {/* Search + barcode actions */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5 flex-1 shadow-sm">
+            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+            </svg>
+            <input type="text" placeholder="ຄົ້ນຫາສິນຄ້າ, barcode..."
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400"/>
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Barcode print buttons */}
+          {selectedIds.size > 0 && (
+            <button onClick={() => {
+              const selected = products.filter(p => selectedIds.has(p.id) && p.barcode);
+              setBarcodeProducts(selected);
+              setShowBarcodeSheet(true);
+            }}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-purple-600 text-white text-xs font-medium rounded-xl hover:bg-purple-700 shrink-0">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1zm12 0h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1zM5 20h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1z"/>
               </svg>
+              Barcode ({selectedIds.size})
             </button>
           )}
+          <button onClick={() => {
+            const all = products.filter(p => p.barcode);
+            setBarcodeProducts(all);
+            setShowBarcodeSheet(true);
+          }}
+            className="flex items-center gap-1.5 px-3 py-2.5 border border-purple-200 bg-purple-50 text-purple-700 text-xs font-medium rounded-xl hover:bg-purple-100 shrink-0">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1zm12 0h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1zM5 20h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1z"/>
+            </svg>
+            ທັງໝົດ
+          </button>
         </div>
 
         {/* Products table */}
@@ -321,6 +351,15 @@ export default function ProductsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
+                    <th className="px-3 py-3 w-8">
+                      <input type="checkbox"
+                        checked={filtered.length > 0 && filtered.every(p => selectedIds.has(p.id))}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedIds(new Set(filtered.map(p => p.id)));
+                          else setSelectedIds(new Set());
+                        }}
+                        className="w-4 h-4 rounded accent-gray-900 cursor-pointer"/>
+                    </th>
                     <th className="text-left px-3 py-3 text-xs font-medium text-gray-400">ສິນຄ້າ</th>
                     <th className="text-right px-3 py-3 text-xs font-medium text-gray-400">ລາຄາ</th>
                     <th className="text-center px-2 py-3 text-xs font-medium text-gray-400 hidden sm:table-cell">Units</th>
@@ -330,7 +369,18 @@ export default function ProductsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={p.id} className={`hover:bg-gray-50 transition-colors ${selectedIds.has(p.id) ? 'bg-purple-50' : ''}`}>
+                      <td className="px-3 py-2.5">
+                        <input type="checkbox"
+                          checked={selectedIds.has(p.id)}
+                          onChange={e => {
+                            const next = new Set(selectedIds);
+                            if (e.target.checked) next.add(p.id);
+                            else next.delete(p.id);
+                            setSelectedIds(next);
+                          }}
+                          className="w-4 h-4 rounded accent-gray-900 cursor-pointer"/>
+                      </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
@@ -368,6 +418,14 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-2">
+                          {p.barcode && (
+                            <button onClick={() => { setBarcodeProducts([p]); setShowBarcodeSheet(true); }}
+                              className="text-xs text-purple-500 hover:text-purple-700">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1zm12 0h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1zM5 20h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1z"/>
+                              </svg>
+                            </button>
+                          )}
                           <button onClick={() => openEdit(p)} className="text-xs text-blue-500 hover:text-blue-700">ແກ້ໄຂ</button>
                           <button onClick={() => handleDelete(p.id)} className="text-xs text-red-400 hover:text-red-600">ລຶບ</button>
                         </div>
@@ -381,6 +439,103 @@ export default function ProductsPage() {
           </div>
         )}
       </div>
+
+      {/* Barcode Print Modal */}
+      {showBarcodeSheet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-800">ພິມ Barcode ({barcodeProducts.length} ລາຍການ)</h2>
+              <button onClick={() => setShowBarcodeSheet(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-gray-600">ຈຳນວນ label ຕໍ່ລາຍການ:</label>
+                <input type="number" min={1} max={100} value={labelsPerItem}
+                  onChange={e => setLabelsPerItem(Number(e.target.value))}
+                  className="w-20 border border-gray-200 rounded-xl px-3 py-1.5 text-sm outline-none focus:border-gray-400 text-center"/>
+              </div>
+              <p className="text-xs text-gray-400">ລວມ: {barcodeProducts.length * labelsPerItem} labels</p>
+
+              {/* Preview */}
+              <div className="border border-gray-100 rounded-xl p-3 max-h-48 overflow-y-auto space-y-1">
+                {barcodeProducts.slice(0, 5).map(p => (
+                  <div key={p.id} className="flex items-center gap-2 text-xs text-gray-600">
+                    <span className="font-mono text-gray-400">{p.barcode}</span>
+                    <span className="truncate">{p.name}</span>
+                    <span className="ml-auto font-medium">{p.price.toLocaleString()} ₭</span>
+                  </div>
+                ))}
+                {barcodeProducts.length > 5 && (
+                  <p className="text-xs text-gray-400 text-center">...ແລະ {barcodeProducts.length - 5} ລາຍການອີກ</p>
+                )}
+              </div>
+            </div>
+            <div className="px-6 pb-6 flex gap-3">
+              <button onClick={() => setShowBarcodeSheet(false)}
+                className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600">
+                ຍົກເລີກ
+              </button>
+              <button onClick={() => {
+                // Generate barcode HTML using JsBarcode via CDN
+                const items: {name: string; barcode: string; price: number}[] = [];
+                barcodeProducts.forEach(p => {
+                  for (let i = 0; i < labelsPerItem; i++) {
+                    items.push({ name: p.name, barcode: p.barcode!, price: p.price });
+                  }
+                });
+
+                const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; background: white; }
+  .grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; }
+  .label { width: 150px; border: 1px solid #eee; border-radius: 6px; padding: 6px; text-align: center; page-break-inside: avoid; }
+  .name { font-size: 9px; color: #333; margin-bottom: 2px; line-height: 1.2; max-height: 2.4em; overflow: hidden; }
+  .price { font-size: 11px; font-weight: 700; color: #111; margin-top: 2px; }
+  svg { max-width: 100%; }
+  @media print { @page { margin: 5mm; } .grid { gap: 2px; padding: 4px; } }
+</style></head>
+<body>
+<div class="grid">
+${items.map((item, i) => `
+  <div class="label">
+    <div class="name">${item.name.replace(/</g, '&lt;')}</div>
+    <svg class="barcode-${i}"></svg>
+    <div class="price">${item.price.toLocaleString()} ₭</div>
+  </div>`).join('')}
+</div>
+<script>
+  window.onload = function() {
+    ${items.map((item, i) => `
+    try { JsBarcode('.barcode-${i}', '${item.barcode}', { format: 'auto', width: 1.5, height: 40, displayValue: true, fontSize: 9, margin: 2 }); } catch(e) {}
+    `).join('')}
+    setTimeout(() => window.print(), 500);
+  };
+<\/script>
+</body></html>`;
+
+                const win = window.open('', '_blank');
+                if (win) { win.document.write(html); win.document.close(); }
+                setShowBarcodeSheet(false);
+                setSelectedIds(new Set());
+              }}
+                className="flex-1 py-3 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 flex items-center justify-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2m2 4h6a2 2 0 0 0 2-2v-4H7v4a2 2 0 0 0 2 2zm8-12V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4h10z"/>
+                </svg>
+                ພິມ Barcode
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Import Preview Modal */}
       {importPreview && (
