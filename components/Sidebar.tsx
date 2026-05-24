@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
@@ -65,6 +66,7 @@ const MORE_ITEMS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { staff, logout } = useAuth();
+  const [showMore, setShowMore] = useState(false);
 
   return (
     <>
@@ -137,17 +139,42 @@ export default function Sidebar() {
               </a>
             );
           })}
-          {/* Profile/Logout */}
-          <button onClick={logout}
-            className="flex-1 flex flex-col items-center justify-center py-1 px-0.5 text-gray-400">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold
-              ${staff?.role === 'admin' ? 'bg-gray-700' : 'bg-blue-400'}`}>
-              {staff?.name.charAt(0) ?? '?'}
-            </div>
-            <span className="text-xs mt-0.5 font-medium leading-none text-gray-400">
-              {staff?.name.split(' ')[0] ?? 'ອອກ'}
-            </span>
-          </button>
+
+          {/* More menu */}
+          <div className="flex-1 relative flex flex-col items-center justify-center">
+            <button
+              onClick={() => setShowMore(!showMore)}
+              className="flex flex-col items-center justify-center py-1 px-0.5 text-gray-400 w-full h-full">
+              <div className={`p-1 rounded-lg transition-all ${showMore ? 'bg-gray-900 text-white' : ''}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+              </div>
+              <span className={`text-xs mt-0.5 font-medium leading-none ${showMore ? 'text-gray-900' : 'text-gray-400'}`}>ເພີ່ມເຕີມ</span>
+            </button>
+
+            {/* Popup menu */}
+            {showMore && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowMore(false)}/>
+                <div className="absolute bottom-14 right-0 z-40 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-40">
+                  {MORE_ITEMS.filter(i => !i.adminOnly || staff?.role === 'admin').map(item => (
+                    <a key={item.href} href={item.href}
+                      onClick={() => setShowMore(false)}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors
+                        ${pathname === item.href ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      {item.label}
+                    </a>
+                  ))}
+                  <div className="border-t border-gray-100"/>
+                  <button onClick={() => { setShowMore(false); logout(); }}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 w-full">
+                    ອອກຈາກລະບົບ
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </nav>
     </>
