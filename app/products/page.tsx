@@ -19,6 +19,7 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [form, setForm] = useState(emptyForm);
   const [importProgress, setImportProgress] = useState(0);
   const [importTotal, setImportTotal] = useState(0);
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
