@@ -79,7 +79,8 @@ export async function sendToNetwork(
   return new Promise((resolve) => {
     try {
       // Try WebSocket proxy on same machine (localhost:8080)
-      const ws = new WebSocket(`ws://localhost:8080`);
+      const wsHost = ip === "localhost" ? "localhost" : ip.includes(":") ? ip : ip;
+      const ws = new WebSocket(`ws://${ip}:${port}`);
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
