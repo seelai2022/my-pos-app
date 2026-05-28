@@ -19,7 +19,8 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [form, setForm] = useState(emptyForm);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importTotal, setImportTotal] = useState(0);
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -153,6 +154,8 @@ export default function ProductsPage() {
   const handleImportConfirm = async () => {
     if (!importPreview) return;
     setImporting(true);
+    setImportProgress(0);
+    setImportTotal(importPreview.products.length);
     let added = 0, updated = 0;
 
     try {
@@ -175,6 +178,7 @@ export default function ProductsPage() {
         }).eq('id', id);
         existingMap.set(p.name, id);
         updated++;
+        setImportProgress(prev => prev + 1);
       }
 
       // Step 4: Batch insert new products
@@ -190,6 +194,7 @@ export default function ProductsPage() {
           .select('id, name');
         (inserted ?? []).forEach(p => existingMap.set(p.name, p.id));
         added = toInsert.length;
+        setImportProgress(prev => prev + toInsert.length);
       }
 
       // Step 5: Handle units — delete old + batch insert new
@@ -223,7 +228,10 @@ export default function ProductsPage() {
         // Batch insert all units
         const unitRows = importPreview.units
           .map(u => {
-            const productId = freshMap.get(u.productName) ?? (u.productId ? freshMap.get(u.productId) : null);
+            // Try productName first, then productId as fallback
+            const productId = (u.productName ? freshMap.get(u.productName) : null)
+              ?? (u.productId ? freshMap.get(u.productId) : null)
+              ?? null;
             const unitId = unitMap.get(u.unitName);
             if (!productId || !unitId) return null;
             return { product_id: productId, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode || null };
@@ -690,7 +698,15 @@ ${items.map(item => `
               </button>
               <button onClick={handleImportConfirm} disabled={importing}
                 className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {importing ? 'ກຳລັງ Import...' : `ຢືນຢັນ Import ${importPreview.products.length} ສິນຄ້າ${importPreview.units.length > 0 ? ` + ${importPreview.units.length} units` : ''}`}
+                {importing ? (
+                  <div className="flex flex-col items-center gap-1 px-2">
+                    <span>ກຳລັງ Import... {importProgress}/{importTotal} ({importTotal > 0 ? Math.round(importProgress/importTotal*100) : 0}%)</span>
+                    <div className="w-full bg-blue-400 rounded-full h-1.5">
+                      <div className="bg-white h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: importTotal > 0 ? `${Math.round(importProgress/importTotal*100)}%` : '0%' }}/>
+                    </div>
+                  </div>
+                ) : `ຢືນຢັນ Import ${importPreview.products.length} ສິນຄ້າ${importPreview.units.length > 0 ? ` + ${importPreview.units.length} units` : ''}`}
               </button>
             </div>
           </div>
