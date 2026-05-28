@@ -228,7 +228,7 @@ export default function ProductsPage() {
             if (!productId || !unitId) return null;
             return { product_id: productId, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode || null };
           })
-          .filter(Boolean);
+          .filter((row): row is { product_id: string; unit_id: string; name: string; price: number; barcode: string | null } => row !== null);
 
         if (unitRows.length > 0) {
           // Insert in chunks of 100
