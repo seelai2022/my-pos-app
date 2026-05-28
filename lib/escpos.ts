@@ -84,8 +84,8 @@ export async function sendToNetwork(
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
-        const payload = JSON.stringify({ ip, port, data });
-        ws.send(payload);
+        const payload = new Uint8Array(data);
+        ws.send(new Uint8Array(data));
         ws.close();
         resolve(true);
       };
