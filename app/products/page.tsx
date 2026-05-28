@@ -155,70 +155,93 @@ export default function ProductsPage() {
     setImporting(true);
     let added = 0, updated = 0;
 
-    for (const p of importPreview.products) {
-      const payload = { name: p.name, price: p.price, emoji: p.emoji || '🛍️', barcode: p.barcode || null, stock: p.stock || 0 };
-      if (p.id) {
-        const { data } = await supabase.from('products').select('id').eq('id', p.id).single();
-        if (data) {
-          await supabase.from('products').update(payload).eq('id', p.id);
-          // Update units: delete old + insert new from units sheet
-          const relatedUnits = importPreview.units.filter(u => u.productId === p.id);
-          if (relatedUnits.length > 0) {
-            await supabase.from('product_units').delete().eq('product_id', p.id);
-            // Find or create unit types
-            for (const u of relatedUnits) {
-              let unitId = u.unitId;
-              if (!unitId) {
-                const { data: existingUnit } = await supabase.from('units').select('id').eq('name', u.unitName).single();
-                if (existingUnit) { unitId = existingUnit.id; }
-                else {
-                  const { data: newUnit } = await supabase.from('units').insert({ name: u.unitName }).select().single();
-                  unitId = newUnit?.id;
-                }
-              }
-              if (unitId) {
-                await supabase.from('product_units').insert({ product_id: p.id, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode });
-              }
-            }
-          }
-          updated++;
-        } else {
-          const { data: newP } = await supabase.from('products').insert(payload).select().single();
-          added++;
-          // Add units for new product
-          if (newP) {
-            const relatedUnits = importPreview.units.filter(u => u.productId === p.id || u.productName === p.name);
-            for (const u of relatedUnits) {
-              const { data: existingUnit } = await supabase.from('units').select('id').eq('name', u.unitName).single();
-              let unitId = existingUnit?.id;
-              if (!unitId) {
-                const { data: newUnit } = await supabase.from('units').insert({ name: u.unitName }).select().single();
-                unitId = newUnit?.id;
-              }
-              if (unitId) {
-                await supabase.from('product_units').insert({ product_id: newP.id, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode });
-              }
-            }
+    try {
+      // Step 1: Get all existing products by name
+      const { data: existingProducts } = await supabase
+        .from('products')
+        .select('id, name');
+      const existingMap = new Map((existingProducts ?? []).map(p => [p.name, p.id]));
+
+      // Step 2: Split into update/insert groups
+      const toUpdate = importPreview.products.filter(p => existingMap.has(p.name));
+      const toInsert = importPreview.products.filter(p => !existingMap.has(p.name));
+
+      // Step 3: Batch update
+      for (const p of toUpdate) {
+        const id = existingMap.get(p.name)!;
+        await supabase.from('products').update({
+          price: p.price, emoji: p.emoji || '🛍️',
+          barcode: p.barcode || null, stock: p.stock || 0,
+        }).eq('id', id);
+        existingMap.set(p.name, id);
+        updated++;
+      }
+
+      // Step 4: Batch insert new products
+      if (toInsert.length > 0) {
+        const { data: inserted } = await supabase
+          .from('products')
+          .insert(toInsert.map(p => ({
+            name: p.name, price: p.price,
+            emoji: p.emoji || '🛍️',
+            barcode: p.barcode || null,
+            stock: p.stock || 0,
+          })))
+          .select('id, name');
+        (inserted ?? []).forEach(p => existingMap.set(p.name, p.id));
+        added = toInsert.length;
+      }
+
+      // Step 5: Handle units — delete old + batch insert new
+      if (importPreview.units.length > 0) {
+        // Get all product ids we just upserted
+        const allNames = importPreview.products.map(p => p.name);
+        const { data: freshProducts } = await supabase
+          .from('products')
+          .select('id, name')
+          .in('name', allNames);
+        const freshMap = new Map((freshProducts ?? []).map(p => [p.name, p.id]));
+
+        // Delete old units for these products
+        const productIds = [...freshMap.values()];
+        if (productIds.length > 0) {
+          await supabase.from('product_units').delete().in('product_id', productIds);
+        }
+
+        // Get or create unit types
+        const unitNames = [...new Set(importPreview.units.map(u => u.unitName))];
+        const { data: existingUnits } = await supabase.from('units').select('id, name');
+        const unitMap = new Map((existingUnits ?? []).map(u => [u.name, u.id]));
+
+        for (const name of unitNames) {
+          if (!unitMap.has(name)) {
+            const { data: newUnit } = await supabase.from('units').insert({ name }).select().single();
+            if (newUnit) unitMap.set(name, newUnit.id);
           }
         }
-      } else {
-        const { data: newP } = await supabase.from('products').insert(payload).select().single();
-        added++;
-        if (newP) {
-          const relatedUnits = importPreview.units.filter(u => u.productName === p.name);
-          for (const u of relatedUnits) {
-            const { data: existingUnit } = await supabase.from('units').select('id').eq('name', u.unitName).single();
-            let unitId = existingUnit?.id;
-            if (!unitId) {
-              const { data: newUnit } = await supabase.from('units').insert({ name: u.unitName }).select().single();
-              unitId = newUnit?.id;
-            }
-            if (unitId) {
-              await supabase.from('product_units').insert({ product_id: newP.id, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode });
-            }
+
+        // Batch insert all units
+        const unitRows = importPreview.units
+          .map(u => {
+            const productId = freshMap.get(u.productName) ?? (u.productId ? freshMap.get(u.productId) : null);
+            const unitId = unitMap.get(u.unitName);
+            if (!productId || !unitId) return null;
+            return { product_id: productId, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode || null };
+          })
+          .filter(Boolean);
+
+        if (unitRows.length > 0) {
+          // Insert in chunks of 100
+          for (let i = 0; i < unitRows.length; i += 100) {
+            await supabase.from('product_units').insert(unitRows.slice(i, i + 100));
           }
         }
       }
+
+      setImportResult({ added, updated });
+    } catch (err) {
+      setImportError('Import ຜິດພາດ — ກະລຸນາລອງໃໝ່');
+      console.error(err);
     }
 
     setImporting(false);
