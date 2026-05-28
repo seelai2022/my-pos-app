@@ -127,24 +127,44 @@ export function parseProductsFromExcel(file: File): Promise<ImportResult> {
         const data = new Uint8Array(e.target!.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
 
-        // Parse products sheet
-        const productSheet = wb.Sheets['ສິນຄ້າ'] ?? wb.Sheets[wb.SheetNames[0]];
+        console.log('Sheets:', wb.SheetNames);
+
+        // Parse products sheet — support multiple sheet names
+        const productSheetName = wb.SheetNames.find(n =>
+          ['ສິນຄ້າ', 'products', 'Products', 'product', 'Product', 'Sheet1'].includes(n)
+        ) ?? wb.SheetNames[0];
+        const productSheet = wb.Sheets[productSheetName];
         const productRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(productSheet);
 
+        console.log('Product columns:', productRows[0] ? Object.keys(productRows[0]) : []);
+
+        // Helper to get value from multiple possible column names
+        const getVal = (row: Record<string, unknown>, ...keys: string[]) => {
+          for (const k of keys) { if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k]; }
+          return undefined;
+        };
+
         const products: ImportedProduct[] = productRows
-          .filter(row => row['ຊື່ສິນຄ້າ'] && row['ລາຄາດີຟໍລ (₭)'])
+          .filter(row => {
+            const name = getVal(row, 'ຊື່ສິນຄ້າ', 'Name', 'name', 'ຊື່', 'ProductName');
+            const price = getVal(row, 'ລາຄາດີຟໍລ (₭)', 'UnitPrice', 'Price', 'price', 'ລາຄາ', 'unit_price');
+            return name && price && Number(price) > 0;
+          })
           .map(row => ({
-            id: row['ID'] ? String(row['ID']) : undefined,
-            name: String(row['ຊື່ສິນຄ້າ'] ?? ''),
-            price: Number(row['ລາຄາດີຟໍລ (₭)'] ?? 0),
-            emoji: String(row['Emoji'] ?? '🛍️'),
-            barcode: row['Barcode'] ? String(row['Barcode']) : null,
-            stock: Number(row['ສາງ'] ?? 0),
-          }));
+            id: getVal(row, 'ID', 'id', 'ProductID') ? String(getVal(row, 'ID', 'id', 'ProductID')) : undefined,
+            name: String(getVal(row, 'ຊື່ສິນຄ້າ', 'Name', 'name', 'ຊື່', 'ProductName') ?? '').trim(),
+            price: Number(getVal(row, 'ລາຄາດີຟໍລ (₭)', 'UnitPrice', 'Price', 'price', 'ລາຄາ', 'unit_price') ?? 0),
+            emoji: String(getVal(row, 'Emoji', 'emoji') ?? '🛍️'),
+            barcode: getVal(row, 'Barcode', 'barcode', 'BarCode', 'ລະຫັດ') ? String(getVal(row, 'Barcode', 'barcode', 'BarCode', 'ລະຫັດ')) : null,
+            stock: Number(getVal(row, 'ສາງ', 'Stock', 'stock', 'Quantity') ?? 0),
+          }))
+          .filter(p => p.name && p.price > 0);
 
         // Parse units sheet (optional)
         const units: ImportedUnit[] = [];
-        const unitSheetName = wb.SheetNames.find(n => n === 'Units');
+        const unitSheetName = wb.SheetNames.find(n =>
+          ['Units', 'units', 'unit', 'Unit'].includes(n)
+        );
         if (unitSheetName) {
           const unitSheet = wb.Sheets[unitSheetName];
           const unitRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(unitSheet);
