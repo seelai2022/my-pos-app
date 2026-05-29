@@ -198,16 +198,12 @@ export default function ProductsPage() {
         setImportProgress(prev => prev + toInsert.length);
       }
 
-      // Step 5: Handle units — delete old + batch insert new
+      // Step 5: Handle units
       if (importPreview.units.length > 0) {
-        const allNames = importPreview.products.map(p => p.name);
-        const { data: freshProducts } = await supabase
-          .from('products')
-          .select('id, name')
-          .in('name', allNames);
-        const freshMap = new Map((freshProducts ?? []).map(p => [p.name, p.id]));
+        // Use existingMap which already has all product name→id mappings
+        const freshMap = existingMap;
 
-        // Map original Excel UUID → new DB UUID by matching product name
+        // Map original Excel UUID → DB UUID by product name
         const idMap = new Map<string, string>();
         importPreview.products.forEach(p => {
           if (p.id && p.name) {
@@ -220,9 +216,15 @@ export default function ProductsPage() {
         console.log('freshMap size:', freshMap.size);
         console.log('units sample:', importPreview.units.slice(0,3));
 
-        const productIds = [...freshMap.values()];
+        // Delete old units for imported products
+        const productIds = importPreview.products
+          .map(p => freshMap.get(p.name))
+          .filter((id): id is string => !!id);
+
         if (productIds.length > 0) {
-          await supabase.from('product_units').delete().in('product_id', productIds);
+          for (let i = 0; i < productIds.length; i += 50) {
+            await supabase.from('product_units').delete().in('product_id', productIds.slice(i, i + 50));
+          }
         }
 
         const unitRows = importPreview.units
