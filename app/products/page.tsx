@@ -19,9 +19,9 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [form, setForm] = useState(emptyForm);
   const [importProgress, setImportProgress] = useState(0);
   const [importTotal, setImportTotal] = useState(0);
+  const [form, setForm] = useState(emptyForm);
   const [unitRows, setUnitRows] = useState<UnitRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -229,10 +229,19 @@ export default function ProductsPage() {
         // Batch insert all units
         const unitRows = importPreview.units
           .map(u => {
-            // Try productName first, then productId as fallback
-            const productId = (u.productName ? freshMap.get(u.productName) : null)
-              ?? (u.productId ? freshMap.get(u.productId) : null)
-              ?? null;
+            // Match by productId (UUID) first, then by productName
+            let productId: string | undefined;
+            if (u.productId) {
+              // Try direct UUID match in freshMap values
+              for (const [name, id] of freshMap.entries()) {
+                if (id === u.productId) { productId = id; break; }
+              }
+              // If not found by value, try as key
+              if (!productId) productId = freshMap.get(u.productId);
+            }
+            if (!productId && u.productName) {
+              productId = freshMap.get(u.productName);
+            }
             const unitId = unitMap.get(u.unitName);
             if (!productId || !unitId) return null;
             return { product_id: productId, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode || null };

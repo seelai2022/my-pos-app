@@ -167,17 +167,24 @@ export function parseProductsFromExcel(file: File): Promise<ImportResult> {
         );
         if (unitSheetName) {
           const unitSheet = wb.Sheets[unitSheetName];
-          const unitRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(unitSheet);
+          const unitRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(unitSheet, { defval: null });
           unitRows
             .filter(row => row['ຊື່ Unit'] && row['ລາຄາ Unit (₭)'])
             .forEach(row => {
+              // First column has no header — it contains Product ID
+              const keys = Object.keys(row);
+              const firstColVal = row[keys[0]];
+              const productId = row['Product ID']
+                ? String(row['Product ID'])
+                : (firstColVal ? String(firstColVal) : undefined);
+
               units.push({
-                productId: row['Product ID'] ? String(row['Product ID']) : undefined,
+                productId,
                 productName: row['ຊື່ສິນຄ້າ'] ? String(row['ຊື່ສິນຄ້າ']) : undefined,
                 unitId: row['Unit ID'] ? String(row['Unit ID']) : undefined,
                 unitName: String(row['ຊື່ Unit'] ?? ''),
                 price: Number(row['ລາຄາ Unit (₭)'] ?? 0),
-                barcode: row['Barcode Unit'] ? String(row['Barcode Unit']) : null,
+                barcode: row['Barcode Unit'] && String(row['Barcode Unit']) !== 'nan' ? String(row['Barcode Unit']) : null,
               });
             });
         }
