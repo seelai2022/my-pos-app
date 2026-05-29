@@ -216,6 +216,10 @@ export default function ProductsPage() {
           }
         });
 
+        console.log('idMap size:', idMap.size);
+        console.log('freshMap size:', freshMap.size);
+        console.log('units sample:', importPreview.units.slice(0,3));
+
         const productIds = [...freshMap.values()];
         if (productIds.length > 0) {
           await supabase.from('product_units').delete().in('product_id', productIds);
@@ -230,9 +234,12 @@ export default function ProductsPage() {
           })
           .filter((row): row is { product_id: string; name: string; price: number; barcode: string | null } => row !== null);
 
+        console.log('unitRows to insert:', unitRows.length);
+
         if (unitRows.length > 0) {
           for (let i = 0; i < unitRows.length; i += 100) {
-            await supabase.from('product_units').insert(unitRows.slice(i, i + 100));
+            const { error } = await supabase.from('product_units').insert(unitRows.slice(i, i + 100));
+            if (error) console.error('Insert error:', error);
           }
         }
       }
