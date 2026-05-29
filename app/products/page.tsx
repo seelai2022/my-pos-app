@@ -221,27 +221,14 @@ export default function ProductsPage() {
           await supabase.from('product_units').delete().in('product_id', productIds);
         }
 
-        const unitNames = [...new Set(importPreview.units.map(u => u.unitName))];
-        const { data: existingUnits } = await supabase.from('units').select('id, name');
-        const unitMap = new Map((existingUnits ?? []).map(u => [u.name, u.id]));
-
-        for (const name of unitNames) {
-          if (!unitMap.has(name)) {
-            const { data: newUnit } = await supabase.from('units').insert({ name }).select().single();
-            if (newUnit) unitMap.set(name, newUnit.id);
-          }
-        }
-
         const unitRows = importPreview.units
           .map(u => {
-            // Use idMap first (Excel UUID → DB UUID), then freshMap by name
             const productId = (u.productId ? idMap.get(u.productId) : undefined)
               ?? (u.productName ? freshMap.get(u.productName) : undefined);
-            const unitId = unitMap.get(u.unitName);
-            if (!productId || !unitId) return null;
-            return { product_id: productId, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode || null };
+            if (!productId) return null;
+            return { product_id: productId, name: u.unitName, price: u.price, barcode: u.barcode || null };
           })
-          .filter((row): row is { product_id: string; unit_id: string; name: string; price: number; barcode: string | null } => row !== null);
+          .filter((row): row is { product_id: string; name: string; price: number; barcode: string | null } => row !== null);
 
         if (unitRows.length > 0) {
           for (let i = 0; i < unitRows.length; i += 100) {
