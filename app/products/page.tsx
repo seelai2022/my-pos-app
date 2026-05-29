@@ -200,7 +200,6 @@ export default function ProductsPage() {
 
       // Step 5: Handle units — delete old + batch insert new
       if (importPreview.units.length > 0) {
-        // Get all product ids we just upserted
         const allNames = importPreview.products.map(p => p.name);
         const { data: freshProducts } = await supabase
           .from('products')
@@ -208,13 +207,20 @@ export default function ProductsPage() {
           .in('name', allNames);
         const freshMap = new Map((freshProducts ?? []).map(p => [p.name, p.id]));
 
-        // Delete old units for these products
+        // Map original Excel UUID → new DB UUID by matching product name
+        const idMap = new Map<string, string>();
+        importPreview.products.forEach(p => {
+          if (p.id && p.name) {
+            const dbId = freshMap.get(p.name);
+            if (dbId) idMap.set(p.id, dbId);
+          }
+        });
+
         const productIds = [...freshMap.values()];
         if (productIds.length > 0) {
           await supabase.from('product_units').delete().in('product_id', productIds);
         }
 
-        // Get or create unit types
         const unitNames = [...new Set(importPreview.units.map(u => u.unitName))];
         const { data: existingUnits } = await supabase.from('units').select('id, name');
         const unitMap = new Map((existingUnits ?? []).map(u => [u.name, u.id]));
@@ -226,22 +232,11 @@ export default function ProductsPage() {
           }
         }
 
-        // Batch insert all units
         const unitRows = importPreview.units
           .map(u => {
-            // Match by productId (UUID) first, then by productName
-            let productId: string | undefined;
-            if (u.productId) {
-              // Try direct UUID match in freshMap values
-              for (const [name, id] of freshMap.entries()) {
-                if (id === u.productId) { productId = id; break; }
-              }
-              // If not found by value, try as key
-              if (!productId) productId = freshMap.get(u.productId);
-            }
-            if (!productId && u.productName) {
-              productId = freshMap.get(u.productName);
-            }
+            // Use idMap first (Excel UUID → DB UUID), then freshMap by name
+            const productId = (u.productId ? idMap.get(u.productId) : undefined)
+              ?? (u.productName ? freshMap.get(u.productName) : undefined);
             const unitId = unitMap.get(u.unitName);
             if (!productId || !unitId) return null;
             return { product_id: productId, unit_id: unitId, name: u.unitName, price: u.price, barcode: u.barcode || null };
@@ -249,7 +244,6 @@ export default function ProductsPage() {
           .filter((row): row is { product_id: string; unit_id: string; name: string; price: number; barcode: string | null } => row !== null);
 
         if (unitRows.length > 0) {
-          // Insert in chunks of 100
           for (let i = 0; i < unitRows.length; i += 100) {
             await supabase.from('product_units').insert(unitRows.slice(i, i + 100));
           }
