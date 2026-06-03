@@ -23,13 +23,13 @@ interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  storeName: 'POS System',
-  storePhone: '020-XXXX-XXXX',
-  storeAddress: 'ວຽງຈັນ, ລາວ',
+  storeName: 'KL Shop',
+  storePhone: '020 58713211',
+  storeAddress: 'LPB, ລາວ',
   printerType: 'both',
   printerWidth: '80mm',
-  printerNetworkIP: '192.168.1.100',
-  printerNetworkPort: '9100',
+  printerNetworkIP: '192.168.123.3',
+  printerNetworkPort: '8443',
   autoPrint: false,
   cutMode: 'full',
   scannerType: 'both',
