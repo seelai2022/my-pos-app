@@ -76,31 +76,18 @@ export async function sendToNetwork(
   port: number,
   data: number[]
 ): Promise<boolean> {
-  return new Promise((resolve) => {
-    try {
-      // ip = Pi IP, port = WebSocket port (8080)
-      // Use ws:// — browser allows ws:// to local network even from HTTPS
-      const wsUrl = `ws://${ip}:${port}`;
-      const ws = new WebSocket(wsUrl);
-      ws.binaryType = 'arraybuffer';
-
-      ws.onopen = () => {
-        // Send raw bytes directly to proxy
-        const buf = new Uint8Array(data);
-        ws.send(buf);
-        setTimeout(() => { ws.close(); resolve(true); }, 500);
-      };
-      ws.onerror = (e) => {
-        console.warn('Network printer WebSocket error:', e);
-        resolve(false);
-      };
-
-      setTimeout(() => { ws.close(); resolve(false); }, 5000);
-    } catch (e) {
-      console.error('Network printer error:', e);
-      resolve(false);
-    }
-  });
+  try {
+    const buf = new Uint8Array(data);
+    const response = await fetch(`http://${ip}:${port}/print`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: buf,
+    });
+    return response.ok;
+  } catch (e) {
+    console.error('Network printer error:', e);
+    return false;
+  }
 }
 
 // ---- Build ESC/POS receipt bytes ----
