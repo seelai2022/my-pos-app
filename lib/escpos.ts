@@ -77,8 +77,9 @@ export async function sendToNetwork(
   data: number[]
 ): Promise<boolean> {
   try {
+    // Send raw bytes to CUPS via lp command through proxy
     const buf = new Uint8Array(data);
-    const response = await fetch(`http://${ip}:${port}/print`, {
+    const response = await fetch(`https://${ip}:${port}/print`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: buf,
