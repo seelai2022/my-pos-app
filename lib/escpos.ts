@@ -78,30 +78,24 @@ export async function sendToNetwork(
 ): Promise<boolean> {
   return new Promise((resolve) => {
     try {
-      // Try WebSocket proxy on same machine (localhost:8080)
-      const wsHost = ip === "localhost" ? "localhost" : ip.includes(":") ? ip : ip;
-      const ws = new WebSocket(`ws://${ip}:${port}`);
+      // ip = Pi IP, port = WebSocket port (8080)
+      // Use ws:// — browser allows ws:// to local network even from HTTPS
+      const wsUrl = `ws://${ip}:${port}`;
+      const ws = new WebSocket(wsUrl);
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
-        const payload = new Uint8Array(data);
-        ws.send(new Uint8Array(data));
-        ws.close();
-        resolve(true);
+        // Send raw bytes directly to proxy
+        const buf = new Uint8Array(data);
+        ws.send(buf);
+        setTimeout(() => { ws.close(); resolve(true); }, 500);
       };
-      ws.onerror = () => {
-        console.warn('Network printer WebSocket error — falling back to direct fetch');
-        // Fallback: direct HTTP proxy
-        fetch(`http://localhost:8080/print`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ip, port, data }),
-        })
-          .then(() => resolve(true))
-          .catch(() => resolve(false));
+      ws.onerror = (e) => {
+        console.warn('Network printer WebSocket error:', e);
+        resolve(false);
       };
 
-      setTimeout(() => resolve(false), 3000);
+      setTimeout(() => { ws.close(); resolve(false); }, 5000);
     } catch (e) {
       console.error('Network printer error:', e);
       resolve(false);
