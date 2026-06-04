@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { type Order } from '@/lib/supabase';
 import Receipt from './Receipt';
+import { printReceipt } from '@/lib/escpos';
 
 interface PrintModalProps {
   order: Order;
@@ -11,43 +12,45 @@ interface PrintModalProps {
 
 export default function PrintModal({ order, onClose }: PrintModalProps) {
   const [format, setFormat] = useState<'thermal' | 'a4'>('thermal');
+  const [printing, setPrinting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    // Try network print first
+    const settings = (() => {
+      try { return JSON.parse(localStorage.getItem('pos_settings') || '{}'); } catch { return {}; }
+    })();
+
+    if (settings.printerType === 'thermal_network' || settings.printerType === 'both') {
+      setPrinting(true);
+      const result = await printReceipt({
+        storeName: settings.storeName || 'ຮ້ານຂາຍເຄື່ອງ',
+        storeAddress: settings.storeAddress || '',
+        storePhone: settings.storePhone || '',
+        orderId: order.id,
+        date: new Date(order.created_at),
+        paymentMethod: order.payment_method,
+        items: order.order_items?.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.price })) ?? [],
+        total: order.total,
+        received: order.received,
+        change: order.change,
+      }, settings);
+      setPrinting(false);
+      if (result.success) { onClose(); return; }
+    }
+
+    // Fallback: browser print
     const content = printRef.current;
     if (!content) return;
-
     const printWindow = window.open('', '_blank', 'width=900,height=600');
     if (!printWindow) return;
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>ໃບເກັບເງິນ #${order.id.slice(-8).toUpperCase()}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { background: #fff; }
-            @media print {
-              body { margin: 0; }
-              @page {
-                size: ${format === 'thermal' ? '80mm auto' : 'A4'};
-                margin: 0;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          ${content.innerHTML}
-        </body>
-      </html>
-    `);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>ໃບເກັບເງິນ</title>
+      <style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#fff;}
+      @media print{body{margin:0;}@page{size:${format === 'thermal' ? '80mm auto' : 'A4'};margin:0;}}</style>
+      </head><body>${content.innerHTML}</body></html>`);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 300);
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
   };
 
   return (
@@ -94,13 +97,13 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
             className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">
             ປິດ
           </button>
-          <button onClick={handlePrint}
-            className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 flex items-center justify-center gap-2">
+          <button onClick={handlePrint} disabled={printing}
+            className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 flex items-center justify-center gap-2 disabled:opacity-50">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M17 17h2a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2m2 4h6a2 2 0 0 0 2-2v-4H7v4a2 2 0 0 0 2 2zm8-12V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4h10z"/>
             </svg>
-            ພິມ
+            {printing ? 'ກຳລັງພິມ...' : 'ພິມ'}
           </button>
         </div>
       </div>
