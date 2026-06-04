@@ -31,7 +31,7 @@ export default function Receipt({ order, format }: ReceiptProps) {
 
   if (format === 'thermal') {
     return (
-      <div style={{ width: printerWidth, fontFamily: 'monospace', fontSize: '12px', color: '#000', padding: '4mm', background: '#fff' }}>
+      <div style={{ width: printerWidth, fontFamily: "'Noto Sans Lao', 'Noto Sans', Arial, sans-serif", fontSize: '12px', color: '#000', padding: '4mm', background: '#fff' }}>
         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
           <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{storeName}</div>
           <div>{storeAddress}</div>
