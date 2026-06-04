@@ -31,6 +31,7 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
+* { font-family: 'Noto Sans Lao', 'Noto Sans', Arial, sans-serif !important; }
 body { font-family: 'Noto Sans Lao', 'Noto Sans', Arial, sans-serif; font-size: 13px; width: 302px; background: white; }
 </style>
 </head><body>${content.innerHTML}</body></html>`;
