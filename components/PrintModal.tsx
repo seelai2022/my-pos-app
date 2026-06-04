@@ -94,7 +94,7 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const response = await fetch(`https://${ip}:${port}/print`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/octet-stream' },
-          body: escposBytes,
+          body: escposBytes.buffer.slice(escposBytes.byteOffset, escposBytes.byteOffset + escposBytes.byteLength),
         });
 
         if (response.ok) { setPrinting(false); onClose(); return; }
