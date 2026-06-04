@@ -21,7 +21,7 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
       try { return JSON.parse(localStorage.getItem('pos_settings') || '{}'); } catch { return {}; }
     })();
 
-    if (settings.printerType === 'thermal_network' || settings.printerType === 'both') {
+    if (settings.printerType === 'thermal_network' || settings.printerType === 'network' || settings.printerType === 'both') {
       setPrinting(true);
       const result = await printReceipt({
         storeName: settings.storeName || 'ຮ້ານຂາຍເຄື່ອງ',
@@ -34,7 +34,12 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         total: order.total,
         received: order.received ?? undefined,
         change: order.change ?? undefined,
-      }, settings);
+      }, {
+        ...settings,
+        printerType: 'network',
+        networkIP: settings.printerNetworkIP,
+        networkPort: Number(settings.printerNetworkPort),
+      });
       setPrinting(false);
       if (result.success) { onClose(); return; }
     }
