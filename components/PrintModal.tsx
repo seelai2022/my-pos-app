@@ -16,32 +16,41 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = async () => {
-    // Try network print first
     const settings = (() => {
       try { return JSON.parse(localStorage.getItem('pos_settings') || '{}'); } catch { return {}; }
     })();
 
     if (settings.printerType === 'thermal_network' || settings.printerType === 'network' || settings.printerType === 'both') {
       setPrinting(true);
-      const result = await printReceipt({
-        storeName: settings.storeName || 'ຮ້ານຂາຍເຄື່ອງ',
-        storeAddress: settings.storeAddress || '',
-        storePhone: settings.storePhone || '',
-        orderId: order.id,
-        date: new Date(order.created_at),
-        paymentMethod: order.payment_method,
-        items: order.order_items?.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.price })) ?? [],
-        total: order.total,
-        received: order.received ?? undefined,
-        change: order.change ?? undefined,
-      }, {
-        ...settings,
-        printerType: 'network',
-        networkIP: settings.printerNetworkIP,
-        networkPort: Number(settings.printerNetworkPort),
-      });
+      try {
+        const content = printRef.current;
+        if (!content) return;
+
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans Lao', Arial, sans-serif; font-size: 12px; width: 302px; }
+</style>
+</head><body>${content.innerHTML}</body></html>`;
+
+        const ip = settings.printerNetworkIP || '192.168.123.3';
+        const port = settings.printerNetworkPort || '8443';
+
+        const response = await fetch(`https://${ip}:${port}/print`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          body: html,
+        });
+
+        if (response.ok) {
+          setPrinting(false);
+          onClose();
+          return;
+        }
+      } catch (e) {
+        console.error('Network print error:', e);
+      }
       setPrinting(false);
-      if (result.success) { onClose(); return; }
     }
 
     // Fallback: browser print
