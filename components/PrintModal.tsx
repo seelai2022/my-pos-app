@@ -3,11 +3,60 @@
 import { useRef, useState } from 'react';
 import { type Order } from '@/lib/supabase';
 import Receipt from './Receipt';
-import { printReceipt } from '@/lib/escpos';
 
 interface PrintModalProps {
   order: Order;
   onClose: () => void;
+}
+
+// Convert canvas to ESC/POS raster bytes
+function canvasToEscPos(canvas: HTMLCanvasElement): Uint8Array {
+  const ctx = canvas.getContext('2d')!;
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+
+  const PAPER_WIDTH = 576; // 80mm at 203dpi
+  const bytesPerRow = Math.ceil(PAPER_WIDTH / 8);
+
+  const result: number[] = [];
+  // Init printer
+  result.push(0x1b, 0x40);
+  // Set line spacing to 0
+  result.push(0x1b, 0x33, 0x00);
+
+  for (let y = 0; y < height; y++) {
+    // Raster bit image command
+    result.push(0x1b, 0x2a, 0x00);
+    result.push(PAPER_WIDTH & 0xff, (PAPER_WIDTH >> 8) & 0xff);
+
+    for (let byteIdx = 0; byteIdx < bytesPerRow; byteIdx++) {
+      let byte = 0;
+      for (let bit = 0; bit < 8; bit++) {
+        const x = byteIdx * 8 + bit;
+        if (x < width) {
+          const idx = (y * width + x) * 4;
+          const r = pixels[idx];
+          const g = pixels[idx + 1];
+          const b = pixels[idx + 2];
+          const brightness = (r + g + b) / 3;
+          if (brightness < 128) {
+            byte |= (0x80 >> bit);
+          }
+        }
+      }
+      result.push(byte);
+    }
+    result.push(0x0a);
+  }
+
+  // Feed and cut
+  result.push(0x1b, 0x33, 0x18); // Reset line spacing
+  result.push(0x0a, 0x0a, 0x0a);
+  result.push(0x1d, 0x56, 0x41); // Full cut
+
+  return new Uint8Array(result);
 }
 
 export default function PrintModal({ order, onClose }: PrintModalProps) {
@@ -20,33 +69,61 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
       try { return JSON.parse(localStorage.getItem('pos_settings') || '{}'); } catch { return {}; }
     })();
 
-    if (settings.printerType === 'thermal_network' || settings.printerType === 'network' || settings.printerType === 'both') {
+    if ((settings.printerType === 'thermal_network' || settings.printerType === 'network') && settings.printerNetworkIP) {
       setPrinting(true);
       try {
         const content = printRef.current;
-        if (!content) return;
+        if (!content) throw new Error('No content');
 
-        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Noto Sans Lao', Arial, sans-serif; font-size: 12px; width: 302px; }
-</style>
-</head><body>${content.innerHTML}</body></html>`;
-
-        const ip = settings.printerNetworkIP || '192.168.123.3';
+        const ip = settings.printerNetworkIP;
         const port = settings.printerNetworkPort || '8443';
+
+        // Render HTML to canvas using html2canvas-like approach
+        const PAPER_WIDTH = 576;
+        const scale = PAPER_WIDTH / content.offsetWidth;
+
+        // Create offscreen canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = PAPER_WIDTH;
+        canvas.height = Math.ceil(content.offsetHeight * scale);
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(scale, scale);
+
+        // Use foreignObject via SVG to render HTML
+        const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="${content.offsetWidth}" height="${content.offsetHeight}">
+          <foreignObject width="100%" height="100%">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: 'Noto Sans Lao', Arial, sans-serif; font-size: 12px;">
+              ${content.innerHTML}
+            </div>
+          </foreignObject>
+        </svg>`;
+
+        const img = new Image();
+        const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          img.onerror = reject;
+          img.src = url;
+        });
+
+        // Convert canvas to ESC/POS bytes
+        const escposBytes = canvasToEscPos(canvas);
 
         const response = await fetch(`https://${ip}:${port}/print`, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          body: html,
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: escposBytes,
         });
 
-        if (response.ok) {
-          setPrinting(false);
-          onClose();
-          return;
-        }
+        if (response.ok) { setPrinting(false); onClose(); return; }
       } catch (e) {
         console.error('Network print error:', e);
       }
