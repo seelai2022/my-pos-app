@@ -1,45 +1,5 @@
-const CACHE_NAME = 'pos-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/products',
-  '/orders',
-  '/dashboard',
-  '/promotions',
-  '/settings',
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', (event) => {
-  // Network first for API calls
-  if (event.request.url.includes('supabase.co')) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
-    return;
-  }
-  // Cache first for static assets
-  event.respondWith(
-    caches.match(event.request).then((cached) =>
-      cached || fetch(event.request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      })
-    )
-  );
-});
+const CACHE_NAME = 'pos-v2';
+const STATIC_ASSETS = ['/','/ products','/orders','/dashboard','/promotions','/settings'];
+self.addEventListener('install',(e)=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(STATIC_ASSETS)));self.skipWaiting();});
+self.addEventListener('activate',(e)=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE_NAME).map(x=>caches.delete(x)))));self.clients.claim();});
+self.addEventListener('fetch',(e)=>{const u=new URL(e.request.url);if(u.hostname.match(/^192\.168\.|^10\.|^172\./))return;if(!u.protocol.startsWith('http'))return;if(e.request.url.includes('supabase.co')){e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));return;}e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));});
