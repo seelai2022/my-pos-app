@@ -83,9 +83,13 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const canvas = await html2canvas(content, {
           scale: 2,
           useCORS: true,
+          allowTaint: false,
           backgroundColor: '#ffffff',
           width: content.offsetWidth,
           logging: false,
+          ignoreElements: (el) => {
+            return el.tagName === 'IMG';
+          },
         });
 
         // Convert canvas to ESC/POS bytes
@@ -94,7 +98,7 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const response = await fetch(`https://${ip}:${port}/print`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/octet-stream' },
-          body: new Blob([escposBytes]),
+          body: escposBytes,
         });
 
         if (response.ok) { setPrinting(false); onClose(); return; }
