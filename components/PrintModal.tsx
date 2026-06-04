@@ -78,40 +78,14 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const ip = settings.printerNetworkIP;
         const port = settings.printerNetworkPort || '8443';
 
-        // Render HTML to canvas using html2canvas-like approach
-        const PAPER_WIDTH = 576;
-        const scale = PAPER_WIDTH / content.offsetWidth;
-
-        // Create offscreen canvas
-        const canvas = document.createElement('canvas');
-        canvas.width = PAPER_WIDTH;
-        canvas.height = Math.ceil(content.offsetHeight * scale);
-        const ctx = canvas.getContext('2d')!;
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(scale, scale);
-
-        // Use foreignObject via SVG to render HTML
-        const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="${content.offsetWidth}" height="${content.offsetHeight}">
-          <foreignObject width="100%" height="100%">
-            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: 'Noto Sans Lao', Arial, sans-serif; font-size: 12px;">
-              ${content.innerHTML}
-            </div>
-          </foreignObject>
-        </svg>`;
-
-        const img = new Image();
-        const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => {
-            ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(url);
-            resolve();
-          };
-          img.onerror = reject;
-          img.src = url;
+        // Use html2canvas to render receipt
+        const html2canvas = (await import('html2canvas')).default;
+        const canvas = await html2canvas(content, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          width: content.offsetWidth,
+          logging: false,
         });
 
         // Convert canvas to ESC/POS bytes
@@ -120,7 +94,7 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const response = await fetch(`https://${ip}:${port}/print`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/octet-stream' },
-          body: escposBytes.buffer as ArrayBuffer,
+          body: escposBytes,
         });
 
         if (response.ok) { setPrinting(false); onClose(); return; }
