@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import { type Order } from '@/lib/supabase';
 import Receipt from './Receipt';
-import { printReceipt } from '@/lib/escpos';
 
 interface PrintModalProps {
   order: Order;
@@ -48,20 +47,6 @@ body { font-family: 'Noto Sans Lao', 'Noto Sans', Arial, sans-serif; font-size: 
       }
       setPrinting(false);
     }
-
-    // Fallback: browser print
-    const content = printRef.current;
-    if (!content) return;
-    const printWindow = window.open('', '_blank', 'width=900,height=600');
-    if (!printWindow) return;
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>ໃບເກັບເງິນ</title>
-      <style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#fff;}
-      @media print{body{margin:0;}@page{size:${format === 'thermal' ? '80mm auto' : 'A4'};margin:0;}}</style>
-      </head><body>${content.innerHTML}</body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
-  };
 
     // Fallback: browser print
     const content = printRef.current;
