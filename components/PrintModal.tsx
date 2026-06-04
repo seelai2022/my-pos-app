@@ -3,60 +3,11 @@
 import { useRef, useState } from 'react';
 import { type Order } from '@/lib/supabase';
 import Receipt from './Receipt';
+import { printReceipt } from '@/lib/escpos';
 
 interface PrintModalProps {
   order: Order;
   onClose: () => void;
-}
-
-// Convert canvas to ESC/POS raster bytes
-function canvasToEscPos(canvas: HTMLCanvasElement): Uint8Array {
-  const ctx = canvas.getContext('2d')!;
-  const width = canvas.width;
-  const height = canvas.height;
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const pixels = imageData.data;
-
-  const PAPER_WIDTH = 576; // 80mm at 203dpi
-  const bytesPerRow = Math.ceil(PAPER_WIDTH / 8);
-
-  const result: number[] = [];
-  // Init printer
-  result.push(0x1b, 0x40);
-  // Set line spacing to 0
-  result.push(0x1b, 0x33, 0x00);
-
-  for (let y = 0; y < height; y++) {
-    // Raster bit image command
-    result.push(0x1b, 0x2a, 0x00);
-    result.push(PAPER_WIDTH & 0xff, (PAPER_WIDTH >> 8) & 0xff);
-
-    for (let byteIdx = 0; byteIdx < bytesPerRow; byteIdx++) {
-      let byte = 0;
-      for (let bit = 0; bit < 8; bit++) {
-        const x = byteIdx * 8 + bit;
-        if (x < width) {
-          const idx = (y * width + x) * 4;
-          const r = pixels[idx];
-          const g = pixels[idx + 1];
-          const b = pixels[idx + 2];
-          const brightness = (r + g + b) / 3;
-          if (brightness < 128) {
-            byte |= (0x80 >> bit);
-          }
-        }
-      }
-      result.push(byte);
-    }
-    result.push(0x0a);
-  }
-
-  // Feed and cut
-  result.push(0x1b, 0x33, 0x18); // Reset line spacing
-  result.push(0x0a, 0x0a, 0x0a);
-  result.push(0x1d, 0x56, 0x41); // Full cut
-
-  return new Uint8Array(result);
 }
 
 export default function PrintModal({ order, onClose }: PrintModalProps) {
@@ -78,26 +29,17 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const ip = settings.printerNetworkIP;
         const port = settings.printerNetworkPort || '8443';
 
-        // Use html2canvas to render receipt
-        const html2canvas = (await import('html2canvas')).default;
-        const canvas = await html2canvas(content, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: false,
-          backgroundColor: '#ffffff',
-          width: content.offsetWidth,
-          logging: false,
-          ignoreElements: (el) => {
-            return el.tagName === 'IMG';
-          },
-        });
-
-        // Convert canvas to ESC/POS bytes
-        const escposBytes = canvasToEscPos(canvas);
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans Lao', 'Noto Sans', Arial, sans-serif; font-size: 13px; width: 302px; background: white; }
+</style>
+</head><body>${content.innerHTML}</body></html>`;
 
         const response = await fetch(`https://${ip}:${port}/print`, {
           method: 'POST',
-          body: escposBytes as unknown as BodyInit,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          body: html,
         });
 
         if (response.ok) { setPrinting(false); onClose(); return; }
@@ -106,6 +48,20 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
       }
       setPrinting(false);
     }
+
+    // Fallback: browser print
+    const content = printRef.current;
+    if (!content) return;
+    const printWindow = window.open('', '_blank', 'width=900,height=600');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>ໃບເກັບເງິນ</title>
+      <style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#fff;}
+      @media print{body{margin:0;}@page{size:${format === 'thermal' ? '80mm auto' : 'A4'};margin:0;}}</style>
+      </head><body>${content.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+  };
 
     // Fallback: browser print
     const content = printRef.current;
