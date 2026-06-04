@@ -32,8 +32,8 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         paymentMethod: order.payment_method,
         items: order.order_items?.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.price })) ?? [],
         total: order.total,
-        received: order.received,
-        change: order.change,
+        received: order.received ?? undefined,
+        change: order.change ?? undefined,
       }, settings);
       setPrinting(false);
       if (result.success) { onClose(); return; }
