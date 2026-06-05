@@ -30,7 +30,8 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
 
         // Render receipt to canvas using html2canvas
         // Use dom-to-image-more which supports lab() colors
-        const domtoimage = (await import('dom-to-image-more')).default;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const domtoimage = (await import('dom-to-image-more' as any)).default;
         const blob = await domtoimage.toBlob(content, {
           width: content.offsetWidth * 2,
           height: content.offsetHeight * 2,
