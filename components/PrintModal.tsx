@@ -37,13 +37,18 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
           backgroundColor: '#ffffff',
           logging: false,
           onclone: (doc) => {
-            // Fix lab() color functions not supported by html2canvas
-            const all = doc.querySelectorAll('*');
-            all.forEach((el) => {
-              const style = (el as HTMLElement).style;
-              if (style.color && style.color.includes('lab(')) style.color = '#000';
-              if (style.backgroundColor && style.backgroundColor.includes('lab(')) style.backgroundColor = '#fff';
-            });
+            // Inject style to override all lab() colors
+            const style = doc.createElement('style');
+            style.textContent = `
+              * { 
+                color: #000 !important; 
+                background-color: #fff !important;
+                border-color: #ccc !important;
+              }
+              [class*="bg-"] { background-color: #fff !important; }
+              [class*="text-"] { color: #000 !important; }
+            `;
+            doc.head.appendChild(style);
           },
         });
 
