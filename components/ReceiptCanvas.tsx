@@ -122,19 +122,8 @@ export default function ReceiptCanvas({ order, onReady }: ReceiptCanvasProps) {
       if (onReady) onReady(canvas);
     };
 
-    // Load Noto Sans Lao from Google Fonts
+    // Font already loaded via globals.css
     const loadAndDraw = async () => {
-      try {
-        const font = new FontFace(
-          'Noto Sans Lao',
-          'url(https://fonts.gstatic.com/s/notosanslao/v33/bx6lNx2Ol_ixgdYWLm9BwxM3NW6BOkuf763Clj73CiQ_J1Djx9pidOt4ccMvVqA.woff2)',
-          { style: 'normal', weight: '400' }
-        );
-        await font.load();
-        document.fonts.add(font);
-      } catch (e) {
-        console.warn('Font load failed, using fallback:', e);
-      }
       await document.fonts.ready;
       drawReceipt(canvas);
     };
