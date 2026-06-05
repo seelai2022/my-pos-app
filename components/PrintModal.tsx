@@ -28,18 +28,25 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const ip = settings.printerNetworkIP;
         const port = settings.printerNetworkPort || '8443';
 
-        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-* { font-family: 'Noto Sans Lao', 'Noto Sans', Arial, sans-serif !important; }
-body { font-family: 'Noto Sans Lao', 'Noto Sans', Arial, sans-serif; font-size: 13px; width: 302px; background: white; }
-</style>
-</head><body>${content.innerHTML}</body></html>`;
+        // Render receipt to canvas using html2canvas
+        const html2canvas = (await import('html2canvas')).default;
+        const canvas = await html2canvas(content, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
+
+        // Convert canvas to PNG blob
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((b) => resolve(b!), 'image/png');
+        });
 
         const response = await fetch(`https://${ip}:${port}/print`, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          body: html,
+          headers: { 'Content-Type': 'image/png' },
+          body: blob,
         });
 
         if (response.ok) { setPrinting(false); onClose(); return; }
