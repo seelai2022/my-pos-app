@@ -36,6 +36,15 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
+          onclone: (doc) => {
+            // Fix lab() color functions not supported by html2canvas
+            const all = doc.querySelectorAll('*');
+            all.forEach((el) => {
+              const style = (el as HTMLElement).style;
+              if (style.color && style.color.includes('lab(')) style.color = '#000';
+              if (style.backgroundColor && style.backgroundColor.includes('lab(')) style.backgroundColor = '#fff';
+            });
+          },
         });
 
         // Convert canvas to PNG blob
