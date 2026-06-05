@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { type Order } from '@/lib/supabase';
 import Receipt from './Receipt';
+import ReceiptCanvas from './ReceiptCanvas';
 
 interface PrintModalProps {
   order: Order;
@@ -13,6 +14,11 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
   const [format, setFormat] = useState<'thermal' | 'a4'>('thermal');
   const [printing, setPrinting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const handleCanvasReady = useCallback((canvas: HTMLCanvasElement) => {
+    canvasRef.current = canvas;
+  }, []);
 
   const handlePrint = async () => {
     const settings = (() => {
@@ -22,27 +28,19 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
     if ((settings.printerType === 'thermal_network' || settings.printerType === 'network') && settings.printerNetworkIP) {
       setPrinting(true);
       try {
-        const content = printRef.current;
-        if (!content) throw new Error('No content');
-
         const ip = settings.printerNetworkIP;
         const port = settings.printerNetworkPort || '8443';
 
-        // Render receipt to canvas using html2canvas
-        // Wait for fonts to load
+        // Wait for fonts
         await document.fonts.ready;
 
-        // Use dom-to-image-more which supports lab() colors
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const domtoimage = (await import('dom-to-image-more' as any)).default;
-        const blob = await domtoimage.toBlob(content, {
-          width: content.offsetWidth * 2,
-          height: content.offsetHeight * 2,
-          style: {
-            transform: 'scale(2)',
-            transformOrigin: 'top left',
-          },
-          bgcolor: '#ffffff',
+        // Get canvas
+        const canvas = canvasRef.current;
+        if (!canvas) throw new Error('Canvas not ready');
+
+        // Canvas to PNG blob
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((b) => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
         });
 
         const response = await fetch(`https://${ip}:${port}/print`, {
@@ -112,6 +110,9 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
             <Receipt order={order} format={format} />
           </div>
         </div>
+
+        {/* Hidden canvas for thermal print */}
+        <ReceiptCanvas order={order} onReady={handleCanvasReady} />
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
