@@ -29,6 +29,9 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const port = settings.printerNetworkPort || '8443';
 
         // Render receipt to canvas using html2canvas
+        // Wait for fonts to load
+        await document.fonts.ready;
+
         // Use dom-to-image-more which supports lab() colors
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const domtoimage = (await import('dom-to-image-more' as any)).default;
