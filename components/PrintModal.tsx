@@ -59,10 +59,13 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         });
 
         if (response.ok) { setPrinting(false); onClose(); return; }
+        throw new Error('Print failed: ' + response.status);
       } catch (e) {
         console.error('Network print error:', e);
+        alert('ພິມບໍ່ສຳເລັດ: ' + e);
       }
       setPrinting(false);
+      return;
     }
 
     // Fallback: browser print
