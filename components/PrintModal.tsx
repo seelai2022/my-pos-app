@@ -29,32 +29,16 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
         const port = settings.printerNetworkPort || '8443';
 
         // Render receipt to canvas using html2canvas
-        const html2canvas = (await import('html2canvas')).default;
-        const canvas = await html2canvas(content, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          onclone: (doc) => {
-            // Inject style to override all lab() colors
-            const style = doc.createElement('style');
-            style.textContent = `
-              * { 
-                color: #000 !important; 
-                background-color: #fff !important;
-                border-color: #ccc !important;
-              }
-              [class*="bg-"] { background-color: #fff !important; }
-              [class*="text-"] { color: #000 !important; }
-            `;
-            doc.head.appendChild(style);
+        // Use dom-to-image-more which supports lab() colors
+        const domtoimage = (await import('dom-to-image-more')).default;
+        const blob = await domtoimage.toBlob(content, {
+          width: content.offsetWidth * 2,
+          height: content.offsetHeight * 2,
+          style: {
+            transform: 'scale(2)',
+            transformOrigin: 'top left',
           },
-        });
-
-        // Convert canvas to PNG blob
-        const blob = await new Promise<Blob>((resolve) => {
-          canvas.toBlob((b) => resolve(b!), 'image/png');
+          bgcolor: '#ffffff',
         });
 
         const response = await fetch(`https://${ip}:${port}/print`, {
