@@ -33,6 +33,8 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
 
         // Wait for fonts
         await document.fonts.ready;
+        // Extra wait to ensure font is applied
+        await new Promise(r => setTimeout(r, 500));
 
         // Get canvas
         const canvas = canvasRef.current;
