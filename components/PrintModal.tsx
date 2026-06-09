@@ -10,6 +10,15 @@ interface PrintModalProps {
 }
 
 async function drawReceiptToPNG(order: Order): Promise<Blob> {
+  // Force load Noto Sans Lao
+  try {
+    await Promise.all([
+      document.fonts.load('400 14px "Noto Sans Lao"'),
+      document.fonts.load('700 14px "Noto Sans Lao"'),
+    ]);
+  } catch (e) {
+    console.warn('Font load failed:', e);
+  }
   await document.fonts.ready;
 
   const PAPER_WIDTH = 576;
