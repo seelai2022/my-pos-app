@@ -9,57 +9,32 @@ interface PrintModalProps {
   onClose: () => void;
 }
 
-async function drawReceiptToPNG(order: Order): Promise<Blob> {
-  // Force load Noto Sans Lao
-  try {
-    await Promise.all([
-      document.fonts.load('400 14px "Noto Sans Lao"'),
-      document.fonts.load('700 14px "Noto Sans Lao"'),
-    ]);
-  } catch (e) {
-    console.warn('Font load failed:', e);
-  }
-  await document.fonts.ready;
-
+function drawCanvas(order: Order): Promise<Blob> {
   const PAPER_WIDTH = 576;
   const METHOD_LABEL: Record<string, string> = { cash: 'ເງິນສົດ', qr: 'QR Code', card: 'ບັດ' };
   const items = order.order_items ?? [];
   const settings = (() => { try { return JSON.parse(localStorage.getItem('pos_settings') || '{}'); } catch { return {}; } })();
-
   const F = (size: number, bold = false) => `${bold ? 'bold ' : ''}${size}px "Noto Sans Lao", Arial, sans-serif`;
-
-  // Measure height
-  const lineH = 26;
-  const totalH = 160 + items.length * lineH * 2 + 180;
-
+  const totalH = 160 + items.length * 52 + 180;
   const canvas = document.createElement('canvas');
   canvas.width = PAPER_WIDTH;
   canvas.height = totalH;
   const ctx = canvas.getContext('2d')!;
-
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, PAPER_WIDTH, totalH);
   ctx.fillStyle = '#000';
-
   let y = 30;
-
   const dash = () => {
-    ctx.save();
-    ctx.setLineDash([5, 5]);
+    ctx.save(); ctx.setLineDash([5, 5]);
     ctx.beginPath(); ctx.moveTo(10, y); ctx.lineTo(PAPER_WIDTH - 10, y); ctx.stroke();
-    ctx.restore();
-    y += 16;
+    ctx.restore(); y += 16;
   };
-
-  // Header
   ctx.font = F(22, true); ctx.textAlign = 'center';
   ctx.fillText(settings.storeName || 'KL Shop', PAPER_WIDTH / 2, y); y += 28;
   ctx.font = F(13);
   if (settings.storeAddress) { ctx.fillText(settings.storeAddress, PAPER_WIDTH / 2, y); y += 22; }
   if (settings.storePhone) { ctx.fillText(settings.storePhone, PAPER_WIDTH / 2, y); y += 22; }
   dash();
-
-  // Order info
   ctx.font = F(13); ctx.textAlign = 'left';
   const date = new Date(order.created_at);
   ctx.fillText(`ບິນ: #${order.id.slice(-8).toUpperCase()}`, 10, y); y += 22;
@@ -67,8 +42,6 @@ async function drawReceiptToPNG(order: Order): Promise<Blob> {
   ctx.fillText(`ເວລາ: ${date.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' })}`, 10, y); y += 22;
   ctx.fillText(`ຊຳລະ: ${METHOD_LABEL[order.payment_method] ?? order.payment_method}`, 10, y); y += 22;
   dash();
-
-  // Items
   for (const item of items) {
     ctx.font = F(13); ctx.textAlign = 'left';
     const name = item.product_name.length > 28 ? item.product_name.slice(0, 28) + '...' : item.product_name;
@@ -76,33 +49,45 @@ async function drawReceiptToPNG(order: Order): Promise<Blob> {
     ctx.font = F(12); ctx.textAlign = 'left';
     ctx.fillText(`  ${item.price.toLocaleString()} x ${item.quantity}`, 10, y);
     ctx.textAlign = 'right';
-    ctx.fillText(`${(item.price * item.quantity).toLocaleString()} ₭`, PAPER_WIDTH - 10, y);
-    y += 24;
+    ctx.fillText(`${(item.price * item.quantity).toLocaleString()} ₭`, PAPER_WIDTH - 10, y); y += 24;
   }
   dash();
-
-  // Total
   ctx.font = F(15, true); ctx.textAlign = 'left';
   ctx.fillText('ລວມທັງໝົດ', 10, y);
   ctx.textAlign = 'right';
   ctx.fillText(`${order.total.toLocaleString()} ₭`, PAPER_WIDTH - 10, y); y += 28;
-
   if (order.payment_method === 'cash' && order.received) {
     ctx.font = F(13); ctx.textAlign = 'left';
     ctx.fillText('ຮັບມາ', 10, y); ctx.textAlign = 'right';
     ctx.fillText(`${order.received.toLocaleString()} ₭`, PAPER_WIDTH - 10, y); y += 22;
-    ctx.textAlign = 'left';
-    ctx.fillText('ເງິນທອນ', 10, y); ctx.textAlign = 'right';
+    ctx.textAlign = 'left'; ctx.fillText('ເງິນທອນ', 10, y); ctx.textAlign = 'right';
     ctx.fillText(`${(order.change ?? 0).toLocaleString()} ₭`, PAPER_WIDTH - 10, y); y += 22;
   }
   dash();
-
   ctx.font = F(13); ctx.textAlign = 'center';
   ctx.fillText('ຂອບໃຈທີ່ໃຊ້ບໍລິການ', PAPER_WIDTH / 2, y);
-
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
   });
+}
+
+async function printToPrinter(order: Order, ip: string, port: string): Promise<void> {
+  // Force load font
+  await document.fonts.load('400 14px "Noto Sans Lao"');
+  await document.fonts.load('700 14px "Noto Sans Lao"');
+  await document.fonts.ready;
+
+  // Draw twice — ensure font applied on second draw
+  await drawCanvas(order);
+  await new Promise(r => setTimeout(r, 150));
+  const blob = await drawCanvas(order);
+
+  const response = await fetch(`https://${ip}:${port}/print`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png' },
+    body: blob,
+  });
+  if (!response.ok) throw new Error('Print failed: ' + response.status);
 }
 
 export default function PrintModal({ order, onClose }: PrintModalProps) {
@@ -116,16 +101,8 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
     if ((settings.printerType === 'thermal_network' || settings.printerType === 'network') && settings.printerNetworkIP) {
       setPrinting(true);
       try {
-        const ip = settings.printerNetworkIP;
-        const port = settings.printerNetworkPort || '8443';
-        const blob = await drawReceiptToPNG(order);
-        const response = await fetch(`https://${ip}:${port}/print`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'image/png' },
-          body: blob,
-        });
-        if (response.ok) { setPrinting(false); onClose(); return; }
-        throw new Error('Print failed: ' + response.status);
+        await printToPrinter(order, settings.printerNetworkIP, settings.printerNetworkPort || '8443');
+        setPrinting(false); onClose(); return;
       } catch (e) {
         console.error('Network print error:', e);
         alert('ພິມບໍ່ສຳເລັດ: ' + e);
@@ -134,7 +111,6 @@ export default function PrintModal({ order, onClose }: PrintModalProps) {
       return;
     }
 
-    // Fallback: browser print
     const content = printRef.current;
     if (!content) return;
     const printWindow = window.open('', '_blank', 'width=900,height=600');
